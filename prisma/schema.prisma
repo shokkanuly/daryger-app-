@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+}
+
+enum ConsultationStatus {
+  TRIAGE
+  WAITING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+  EMERGENCY
+}
+
+enum AppointmentType {
+  IN_PERSON
+  HOME_VISIT
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  town      String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  doctorProfile       DoctorProfile?
+  patientConsultations Consultation[] @relation("PatientConsultations")
+  doctorConsultations  Consultation[] @relation("DoctorConsultations")
+  patientAppointments  Appointment[]  @relation("PatientAppointments")
+  doctorAppointments   Appointment[]  @relation("DoctorAppointments")
+  messages             Message[]
+}
+
+model DoctorProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialty   String
+  clinic      String
+  region      String  @default("Karaganda")
+  isAvailable Boolean @default(true)
+  bio         String?
+
+  timeSlots TimeSlot[]
+}
+
+model Consultation {
+  id             String             @id @default(cuid())
+  patientId      String
+  patient        User                 @relation("PatientConsultations", fields: [patientId], references: [id])
+  doctorId       String?
+  doctor         User?                @relation("DoctorConsultations", fields: [doctorId], references: [id])
+  status         ConsultationStatus   @default(TRIAGE)
+  urgency        Urgency              @default(MEDIUM)
+  chiefComplaint String?
+  symptoms       String?
+  triageData     String?
+  diagnosis      String?
+  prescription   String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  messages Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String
+  createdAt      DateTime     @default(now())
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  patientId String
+  patient   User              @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctorId  String
+  doctor    User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  date      String
+  time      String
+  type      AppointmentType   @default(IN_PERSON)
+  status    AppointmentStatus @default(SCHEDULED)
+  clinic    String?
+  notes     String?
+  createdAt DateTime          @default(now())
+}
+
+model TimeSlot {
+  id        String        @id @default(cuid())
+  doctorId  String
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  date      String
+  time      String
+  isBooked  Boolean       @default(false)
+}
