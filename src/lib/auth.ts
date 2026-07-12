@@ -11,7 +11,7 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
-  role: "PATIENT" | "DOCTOR";
+  role: "PATIENT" | "DOCTOR" | "CLINIC_ADMIN" | "PARTNER_OPERATOR" | "FINANCE_ANALYST" | "HR_ANALYST" | "SYSTEM_ADMIN";
   town?: string | null;
 }
 
@@ -46,7 +46,7 @@ export async function getSession(): Promise<SessionUser | null> {
   return verifyToken(token);
 }
 
-export async function requireSession(role?: "PATIENT" | "DOCTOR") {
+export async function requireSession(role?: "PATIENT" | "DOCTOR" | "CLINIC_ADMIN" | "PARTNER_OPERATOR" | "FINANCE_ANALYST" | "HR_ANALYST" | "SYSTEM_ADMIN") {
   const session = await getSession();
   if (!session) return null;
   if (role && session.role !== role) return null;
@@ -78,7 +78,7 @@ export async function authenticateUser(email: string, password: string) {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role as "PATIENT" | "DOCTOR",
+    role: user.role as any,
     town: user.town,
   };
 }

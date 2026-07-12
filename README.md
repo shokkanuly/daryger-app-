@@ -10,6 +10,7 @@ Built for the **Terricon Valley** incubator pitch.
 
 ```bash
 cd ~/Desktop/projects/it/daryger
+docker compose up -d
 npm install
 npm run db:migrate
 npm run db:seed

@@ -15,5 +15,16 @@ export async function POST(req: NextRequest) {
   const token = await createToken(user);
   await setSessionCookie(token);
 
-  return NextResponse.json({ user, redirect: user.role === "DOCTOR" ? "/doctor" : "/patient" });
+  let redirect = "/patient";
+  if (user.role === "DOCTOR") {
+    redirect = "/doctor";
+  } else if (user.role === "CLINIC_ADMIN") {
+    redirect = "/ops";
+  } else if (user.role === "FINANCE_ANALYST") {
+    redirect = "/finance";
+  } else if (user.role === "SYSTEM_ADMIN" || user.role === "PARTNER_OPERATOR") {
+    redirect = "/price/admin";
+  }
+
+  return NextResponse.json({ user, redirect });
 }

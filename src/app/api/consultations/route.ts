@@ -32,11 +32,32 @@ export async function POST(req: NextRequest) {
   const urgency = calculateUrgency(answers);
   const chiefComplaint = getComplaintLabel(answers.chief_complaint);
 
+  // Run Gemini AI triage analysis in parallel with DB operations
+  let aiAnalysis: Record<string, unknown> | null = null;
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const aiRes = await fetch(`${baseUrl}/api/triage/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        // Forward session cookie so requireSession() works in the triage route
+        Cookie: req.headers.get("cookie") ?? "",
+      },
+      body: JSON.stringify({ answers, symptoms }),
+    });
+    if (aiRes.ok) aiAnalysis = await aiRes.json();
+  } catch {
+    // Non-fatal — triage proceeds with rule-based urgency
+  }
+
   const availableDoctor = await db.doctorProfile.findFirst({
     where: { isAvailable: true },
     include: { user: true },
     orderBy: { user: { name: "asc" } },
   });
+
+  // Merge rule-based triage answers + AI analysis into triageData JSON
+  const triageData = JSON.stringify({ answers, aiAnalysis });
 
   const consultation = await db.consultation.create({
     data: {
@@ -46,7 +67,7 @@ export async function POST(req: NextRequest) {
       urgency,
       chiefComplaint,
       symptoms: symptoms || null,
-      triageData: JSON.stringify(answers),
+      triageData,
     },
   });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { logAction } from "@/lib/audit";
 
 export async function GET() {
   const session = await requireSession();
@@ -23,6 +24,17 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await requireSession("PATIENT");
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Validate doctor verification (referral)
+  const approvedReferral = await db.consultation.findFirst({
+    where: {
+      patientId: session.id,
+      followupApproved: true,
+    },
+  });
+  if (!approvedReferral) {
+    return NextResponse.json({ error: "Booking requires doctor approval referral" }, { status: 403 });
+  }
 
   const { doctorId, date, time, type, clinic, notes } = await req.json();
 
@@ -51,5 +63,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await logAction(
+    session.id,
+    "BOOK_APPOINTMENT",
+    "Appointment",
+    appointment.id,
+    { doctorId, date, time, type, clinic }
+  );
+
   return NextResponse.json(appointment);
 }
+

@@ -4,13 +4,29 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Role {
   PATIENT
   DOCTOR
+  CLINIC_ADMIN
+  PARTNER_OPERATOR
+  FINANCE_ANALYST
+  HR_ANALYST
+  SYSTEM_ADMIN
 }
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
 
 enum ConsultationStatus {
   TRIAGE
@@ -57,14 +73,16 @@ model User {
 }
 
 model DoctorProfile {
-  id          String  @id @default(cuid())
-  userId      String  @unique
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  specialty   String
-  clinic      String
-  region      String  @default("Karaganda")
-  isAvailable Boolean @default(true)
-  bio         String?
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialty     String
+  clinic        String
+  region        String  @default("Karaganda")
+  isAvailable   Boolean @default(true)
+  bio           String?
+  licenseNumber String?
+  isVerified    Boolean @default(false)
 
   timeSlots TimeSlot[]
 }
@@ -82,6 +100,8 @@ model Consultation {
   triageData     String?
   diagnosis      String?
   prescription   String?
+  videoRoomUrl   String?
+  followupApproved Boolean            @default(false) @map("followup_approved")
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
@@ -120,4 +140,65 @@ model TimeSlot {
   date      String
   time      String
   isBooked  Boolean       @default(false)
+}
+
+model Service {
+  id           String        @id @default(uuid())
+  name         String
+  synonyms     String[]
+  category     String        // lab | consult | diagnostic | procedure
+  icdCode      String?
+  isActive     Boolean       @default(true)
+  priceRecords PriceRecord[]
+}
+
+model Clinic {
+  id           String        @id @default(uuid())
+  name         String
+  city         String
+  address      String?
+  phone        String?
+  workingHours String?
+  sourceUrl    String?
+  sourceType   String        // PUBLIC | PARTNER
+  lat          Float?
+  lng          Float?
+  isActive     Boolean       @default(true)
+  rawCaptures  RawCapture[]
+  priceRecords PriceRecord[]
+}
+
+model RawCapture {
+  id         String   @id @default(uuid())
+  clinicId   String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id])
+  sourceUrl  String
+  rawContent String   // key in object storage
+  fetchedAt  DateTime @default(now())
+  status     String   // PENDING | PARSED | ERROR
+}
+
+model MatchQueueItem {
+  id                 String   @id @default(uuid())
+  rawName            String
+  suggestedServiceId String?
+  confidence         Float?
+  status             String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  sourceRecordId     String
+  createdAt          DateTime @default(now())
+}
+
+model PriceRecord {
+  id             String   @id @default(uuid())
+  serviceNameRaw String
+  serviceId      String?
+  service        Service? @relation(fields: [serviceId], references: [id])
+  clinicId       String
+  clinic         Clinic   @relation(fields: [clinicId], references: [id])
+  priceKzt       Decimal
+  currency       String   @default("KZT")
+  durationDays   Int?
+  parsedAt       DateTime @default(now())
+  isActive       Boolean  @default(true)
+  sourceType     String   // CRAWL | PARTNER_DOC
 }

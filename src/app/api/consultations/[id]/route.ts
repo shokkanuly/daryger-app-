@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { logAction } from "@/lib/audit";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
@@ -36,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { status, diagnosis, prescription } = await req.json();
+  const { status, diagnosis, prescription, followupApproved } = await req.json();
 
   const consultation = await db.consultation.update({
     where: { id },
@@ -44,9 +45,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       status,
       diagnosis,
       prescription,
+      followupApproved: followupApproved ?? false,
       doctorId: session.id,
     },
   });
 
+  await logAction(
+    session.id,
+    "COMPLETE_CONSULTATION",
+    "Consultation",
+    consultation.id,
+    { status, diagnosis, prescription, followupApproved }
+  );
+
   return NextResponse.json(consultation);
 }
+

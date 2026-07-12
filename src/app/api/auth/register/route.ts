@@ -3,7 +3,7 @@ import { hashPassword, createToken, setSessionCookie } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
-  const { email, password, name, role, town, phone } = await req.json();
+  const { email, password, name, role, town, phone, specialty, clinic, licenseNumber } = await req.json();
 
   if (!email || !password || !name || !role) {
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
@@ -20,12 +20,18 @@ export async function POST(req: NextRequest) {
   });
 
   if (role === "DOCTOR") {
+    // isVerified: true only for @daryger.kz demo accounts.
+    // In production this would go through a medical license validation queue.
+    const isVerified = email.endsWith("@daryger.kz");
+
     await db.doctorProfile.create({
       data: {
         userId: user.id,
-        specialty: "General Practitioner",
-        clinic: "Regional Hospital Karaganda",
+        specialty: specialty || "General Practitioner",
+        clinic: clinic || "Regional Hospital Karaganda",
         region: "Karaganda",
+        licenseNumber: licenseNumber || null,
+        isVerified,
       },
     });
   }
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest) {
     id: user.id,
     email: user.email,
     name: user.name,
-    role: user.role as "PATIENT" | "DOCTOR",
+    role: user.role as any,
     town: user.town,
   };
 

@@ -1,13 +1,12 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { addDays, format } from "date-fns";
 
-const adapter = new PrismaBetterSqlite3({
-  url: process.env.DATABASE_URL || "file:./dev.db",
-});
+const adapter = new PrismaPg(process.env.DATABASE_URL!);
 const db = new PrismaClient({ adapter });
+
 
 async function main() {
   await db.message.deleteMany();
@@ -16,6 +15,11 @@ async function main() {
   await db.timeSlot.deleteMany();
   await db.doctorProfile.deleteMany();
   await db.user.deleteMany();
+  await db.priceRecord.deleteMany();
+  await db.matchQueueItem.deleteMany();
+  await db.rawCapture.deleteMany();
+  await db.clinic.deleteMany();
+  await db.service.deleteMany();
 
   const password = await bcrypt.hash("demo123", 10);
 
@@ -70,6 +74,8 @@ async function main() {
       clinic: "Regional Hospital Karaganda",
       region: "Karaganda",
       isAvailable: true,
+      licenseNumber: "KZ-GP-2024-00123",
+      isVerified: true,
       bio: "15 years experience serving Karaganda region. Specializes in remote patient care.",
     },
   });
@@ -81,6 +87,8 @@ async function main() {
       clinic: "City Polyclinic No. 3",
       region: "Karaganda",
       isAvailable: true,
+      licenseNumber: "KZ-PD-2024-00456",
+      isVerified: true,
       bio: "Pediatric specialist available for tele-consultations across the region.",
     },
   });
@@ -108,6 +116,7 @@ async function main() {
       triageData: JSON.stringify({ chief_complaint: "fever", duration: "days", severity: "moderate" }),
       diagnosis: "Acute viral upper respiratory infection",
       prescription: "Rest, fluids, paracetamol 500mg as needed",
+      followupApproved: true,
     },
   });
 
@@ -133,9 +142,131 @@ async function main() {
     },
   });
 
+  await db.user.create({
+    data: {
+      email: "ops@daryger.kz",
+      password,
+      name: "Ops Manager",
+      role: "CLINIC_ADMIN",
+      town: "Karaganda",
+      phone: "+7 721 555 0505",
+    },
+  });
+
+  await db.user.create({
+    data: {
+      email: "partner@daryger.kz",
+      password,
+      name: "Partner Operator",
+      role: "PARTNER_OPERATOR",
+      town: "Karaganda",
+      phone: "+7 721 555 0606",
+    },
+  });
+
+  await db.user.create({
+    data: {
+      email: "finance@daryger.kz",
+      password,
+      name: "Finance Analyst",
+      role: "FINANCE_ANALYST",
+      town: "Karaganda",
+      phone: "+7 721 555 0707",
+    },
+  });
+
+  await db.user.create({
+    data: {
+      email: "hr@daryger.kz",
+      password,
+      name: "HR Specialist",
+      role: "HR_ANALYST",
+      town: "Karaganda",
+      phone: "+7 721 555 0808",
+    },
+  });
+
+  await db.user.create({
+    data: {
+      email: "admin@daryger.kz",
+      password,
+      name: "System Admin",
+      role: "SYSTEM_ADMIN",
+      town: "Karaganda",
+      phone: "+7 721 555 0909",
+    },
+  });
+
+  // Seeding standard services
+  const fs = require("fs");
+  const path = require("path");
+  const servicesData = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "seed-data/services.json"), "utf-8")
+  );
+  
+  for (const s of servicesData) {
+    await db.service.create({
+      data: {
+        name: s.name,
+        synonyms: s.synonyms,
+        category: s.category,
+        icdCode: s.icdCode,
+        isActive: true,
+      },
+    });
+  }
+
+  // Seeding clinics
+  await db.clinic.create({
+    data: {
+      name: "KDL Laboratory",
+      city: "Karaganda",
+      address: "Bukhara-Zhyrau Ave 45",
+      phone: "+7 (7212) 50-60-70",
+      workingHours: "08:00 - 18:00",
+      sourceUrl: "https://kdl.kz",
+      sourceType: "PUBLIC",
+      lat: 49.8056,
+      lng: 73.0858,
+    },
+  });
+
+  await db.clinic.create({
+    data: {
+      name: "Invitro Clinic",
+      city: "Karaganda",
+      address: "Nazarbayev Ave 28",
+      phone: "+7 (7212) 40-50-60",
+      workingHours: "07:30 - 19:00",
+      sourceUrl: "https://invitro.kz",
+      sourceType: "PUBLIC",
+      lat: 49.8065,
+      lng: 73.0822,
+    },
+  });
+
+  await db.clinic.create({
+    data: {
+      name: "Doq Diagnostic Center",
+      city: "Karaganda",
+      address: "Ermekov St 52",
+      phone: "+7 (7212) 30-40-50",
+      workingHours: "08:00 - 20:00",
+      sourceUrl: "https://doq.kz",
+      sourceType: "PUBLIC",
+      lat: 49.7995,
+      lng: 73.0901,
+    },
+  });
+
   console.log("Seed complete!");
   console.log("Patient: patient@daryger.kz / demo123");
   console.log("Doctor:  doctor@daryger.kz / demo123");
+  console.log("Ops:     ops@daryger.kz / demo123");
+  console.log("Partner: partner@daryger.kz / demo123");
+  console.log("Finance: finance@daryger.kz / demo123");
+  console.log("HR:      hr@daryger.kz / demo123");
+  console.log("Admin:   admin@daryger.kz / demo123");
 }
 
 main()

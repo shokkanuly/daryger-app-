@@ -1,0 +1,302 @@
+[
+  {
+    "name": "Complete Blood Count (CBC)",
+    "synonyms": ["ОАК", "Общий анализ крови", "CBC", "ОАК с лейкоформулой", "Анализ крови общий"],
+    "category": "lab",
+    "icdCode": "90.01"
+  },
+  {
+    "name": "Urinalysis (UA)",
+    "synonyms": ["ОАМ", "Общий анализ мочи", "UA", "Анализ мочи общий"],
+    "category": "lab",
+    "icdCode": "90.02"
+  },
+  {
+    "name": "Alanine Aminotransferase (ALT)",
+    "synonyms": ["АЛТ", "Аланинаминотрансфераза", "ALT", "GPT"],
+    "category": "lab",
+    "icdCode": "90.03"
+  },
+  {
+    "name": "Aspartate Aminotransferase (AST)",
+    "synonyms": ["АСТ", "Аспартатаминотрансфераза", "AST", "GOT"],
+    "category": "lab",
+    "icdCode": "90.04"
+  },
+  {
+    "name": "Total Bilirubin",
+    "synonyms": ["Билирубин общий", "Билирубин", "Total Bilirubin"],
+    "category": "lab",
+    "icdCode": "90.05"
+  },
+  {
+    "name": "Blood Glucose",
+    "synonyms": ["Глюкоза крови", "Сахар крови", "Glucose", "Глюкоза"],
+    "category": "lab",
+    "icdCode": "90.06"
+  },
+  {
+    "name": "Glycated Hemoglobin (HbA1c)",
+    "synonyms": ["Гликированный гемоглобин", "HbA1c", "Гликозилированный гемоглобин"],
+    "category": "lab",
+    "icdCode": "90.07"
+  },
+  {
+    "name": "Thyroid Stimulating Hormone (TSH)",
+    "synonyms": ["ТТГ", "Тиреотропный гормон", "TSH"],
+    "category": "lab",
+    "icdCode": "90.08"
+  },
+  {
+    "name": "Free Thyroxine (FT4)",
+    "synonyms": ["Свободный Т4", "Т4 свободный", "Free T4", "FT4"],
+    "category": "lab",
+    "icdCode": "90.09"
+  },
+  {
+    "name": "Lipid Profile",
+    "synonyms": ["Липидный профиль", "Липидограмма", "Lipid Profile", "Холестерин и фракции"],
+    "category": "lab",
+    "icdCode": "90.10"
+  },
+  {
+    "name": "C-Reactive Protein (CRP)",
+    "synonyms": ["СРБ", "С-реактивный белок", "CRP", "C-Reactive Protein"],
+    "category": "lab",
+    "icdCode": "90.11"
+  },
+  {
+    "name": "Rheumatoid Factor (RF)",
+    "synonyms": ["Ревматоидный фактор", "РФ", "Rheumatoid Factor", "РФ количественный"],
+    "category": "lab",
+    "icdCode": "90.12"
+  },
+  {
+    "name": "Serum Creatinine",
+    "synonyms": ["Креатинин сыворотки", "Креатинин", "Serum Creatinine"],
+    "category": "lab",
+    "icdCode": "90.13"
+  },
+  {
+    "name": "Blood Urea Nitrogen (BUN)",
+    "synonyms": ["Мочевина", "Urea", "BUN", "Мочевина крови"],
+    "category": "lab",
+    "icdCode": "90.14"
+  },
+  {
+    "name": "Uric Acid",
+    "synonyms": ["Мочевая кислота", "Uric Acid", "Мочевая кислота в сыворотке"],
+    "category": "lab",
+    "icdCode": "90.15"
+  },
+  {
+    "name": "Vitamin D (25-OH)",
+    "synonyms": ["Витамин Д", "Vitamin D", "25-OH Vitamin D", "25-гидроксивитамин D"],
+    "category": "lab",
+    "icdCode": "90.16"
+  },
+  {
+    "name": "Serum Iron",
+    "synonyms": ["Железо сывороточное", "Сывороточное железо", "Serum Iron", "Железо"],
+    "category": "lab",
+    "icdCode": "90.17"
+  },
+  {
+    "name": "Ferritin",
+    "synonyms": ["Ферритин", "Ferritin"],
+    "category": "lab",
+    "icdCode": "90.18"
+  },
+  {
+    "name": "Vitamin B12",
+    "synonyms": ["Витамин В12", "Цианокобаламин", "Vitamin B12", "В12"],
+    "category": "lab",
+    "icdCode": "90.19"
+  },
+  {
+    "name": "Coagulogram",
+    "synonyms": ["Коагулограмма", "Свертываемость крови", "Гемостазиограмма", "ПТИ", "МНО", "АЧТВ"],
+    "category": "lab",
+    "icdCode": "90.20"
+  },
+  {
+    "name": "Chest X-ray",
+    "synonyms": ["Флюорография", "Рентген грудной клетки", "Рентгенография ОГК", "Chest X-ray"],
+    "category": "diagnostic",
+    "icdCode": "87.44"
+  },
+  {
+    "name": "Electrocardiogram (ECG)",
+    "synonyms": ["ЭКГ", "Электрокардиограмма", "ECG", "EKG", "ЭКГ с расшифровкой"],
+    "category": "diagnostic",
+    "icdCode": "89.52"
+  },
+  {
+    "name": "Abdominal Ultrasound",
+    "synonyms": ["УЗИ брюшной полости", "УЗИ ОБП", "Abdominal Ultrasound", "УЗИ печени и поджелудочной"],
+    "category": "diagnostic",
+    "icdCode": "88.76"
+  },
+  {
+    "name": "Pelvic Ultrasound",
+    "synonyms": ["УЗИ малого таза", "Pelvic Ultrasound", "Гинекологическое УЗИ", "Трансвагинальное УЗИ"],
+    "category": "diagnostic",
+    "icdCode": "88.79"
+  },
+  {
+    "name": "Thyroid Ultrasound",
+    "synonyms": ["УЗИ щитовидной железы", "Thyroid Ultrasound", "УЗИ щитовидки"],
+    "category": "diagnostic",
+    "icdCode": "88.71"
+  },
+  {
+    "name": "Echocardiography (EchoCG)",
+    "synonyms": ["ЭхоКГ", "УЗИ сердца", "Эхокардиография", "Echocardiography"],
+    "category": "diagnostic",
+    "icdCode": "88.72"
+  },
+  {
+    "name": "Brain MRI",
+    "synonyms": ["МРТ головного мозга", "МРТ мозга", "Brain MRI", "МРТ головы"],
+    "category": "diagnostic",
+    "icdCode": "88.91"
+  },
+  {
+    "name": "Lumbar Spine MRI",
+    "synonyms": ["МРТ поясничного отдела", "МРТ поясницы", "Lumbar Spine MRI", "МРТ позвоночника"],
+    "category": "diagnostic",
+    "icdCode": "88.93"
+  },
+  {
+    "name": "Chest CT",
+    "synonyms": ["КТ легких", "КТ органов грудной клетки", "КТ ОГК", "Chest CT"],
+    "category": "diagnostic",
+    "icdCode": "87.41"
+  },
+  {
+    "name": "Abdominal CT",
+    "synonyms": ["КТ брюшной полости", "КТ ОБП", "Abdominal CT", "КТ органов живота"],
+    "category": "diagnostic",
+    "icdCode": "88.01"
+  },
+  {
+    "name": "Mammography",
+    "synonyms": ["Маммография", "Маммография молочных желез", "Mammography", "Рентген молочных желез"],
+    "category": "diagnostic",
+    "icdCode": "87.37"
+  },
+  {
+    "name": "Duplex Ultrasound of Lower Extremity Veins",
+    "synonyms": ["УЗДГ вен нижних конечностей", "Дуплексное сканирование вен", "УЗИ сосудов ног"],
+    "category": "diagnostic",
+    "icdCode": "88.77"
+  },
+  {
+    "name": "Holter ECG Monitoring",
+    "synonyms": ["Холтер ЭКГ", "Суточное мониторирование ЭКГ", "Holter ECG", "Холтеровское мониторирование"],
+    "category": "diagnostic",
+    "icdCode": "89.50"
+  },
+  {
+    "name": "Ambulatory Blood Pressure Monitoring (ABPM)",
+    "synonyms": ["СМАД", "Суточное мониторирование АД", "ABPM"],
+    "category": "diagnostic",
+    "icdCode": "89.60"
+  },
+  {
+    "name": "Gastroscopy (EGD)",
+    "synonyms": ["ФГДС", "Гастроскопия", "ЭГДС", "Фиброгастродуоденоскопия", "EGD", "Gastroscopy"],
+    "category": "diagnostic",
+    "icdCode": "44.13"
+  },
+  {
+    "name": "General Practitioner Consultation",
+    "synonyms": ["Прием терапевта", "Консультация ВОП", "Прием врача общей практики", "Терапевт консультация"],
+    "category": "consult",
+    "icdCode": "89.01"
+  },
+  {
+    "name": "Cardiologist Consultation",
+    "synonyms": ["Прием кардиолога", "Консультация кардиолога", "Кардиолог прием"],
+    "category": "consult",
+    "icdCode": "89.02"
+  },
+  {
+    "name": "Neurologist Consultation",
+    "synonyms": ["Прием невропатолога", "Консультация невролога", "Прием невролога"],
+    "category": "consult",
+    "icdCode": "89.03"
+  },
+  {
+    "name": "Endocrinologist Consultation",
+    "synonyms": ["Прием эндокринолога", "Консультация эндокринолога", "Эндокринолог прием"],
+    "category": "consult",
+    "icdCode": "89.04"
+  },
+  {
+    "name": "Gastroenterologist Consultation",
+    "synonyms": ["Прием гастроэнтеролога", "Консультация гастроэнтеролога", "Гастроэнтеролог"],
+    "category": "consult",
+    "icdCode": "89.05"
+  },
+  {
+    "name": "Dermatologist Consultation",
+    "synonyms": ["Прием дерматолога", "Консультация дерматовенеролога", "Дерматолог прием"],
+    "category": "consult",
+    "icdCode": "89.06"
+  },
+  {
+    "name": "Ophthalmologist Consultation",
+    "synonyms": ["Прием окулиста", "Консультация офтальмолога", "Офтальмолог прием"],
+    "category": "consult",
+    "icdCode": "89.07"
+  },
+  {
+    "name": "Otolaryngologist (ENT) Consultation",
+    "synonyms": ["Прием ЛОРа", "Консультация отоларинголога", "Прием оториноларинголога", "ЛОР консультация"],
+    "category": "consult",
+    "icdCode": "89.08"
+  },
+  {
+    "name": "Gynecologist Consultation",
+    "synonyms": ["Прием гинеколога", "Консультация гинеколога", "Гинеколог прием"],
+    "category": "consult",
+    "icdCode": "89.09"
+  },
+  {
+    "name": "Pediatrician Consultation",
+    "synonyms": ["Прием педиатра", "Консультация педиатра", "Педиатр прием"],
+    "category": "consult",
+    "icdCode": "89.10"
+  },
+  {
+    "name": "Intravenous Infusion (IV Drip)",
+    "synonyms": ["Капельница внутривенно", "Внутривенное вливание", "IV Drip", "Капельница"],
+    "category": "procedure",
+    "icdCode": "99.20"
+  },
+  {
+    "name": "Intramuscular Injection",
+    "synonyms": ["Внутримышечный укол", "В/м инъекция", "Intramuscular Injection", "Укол в/м"],
+    "category": "procedure",
+    "icdCode": "99.21"
+  },
+  {
+    "name": "Wound Dressing Change",
+    "synonyms": ["Перевязка раны", "Перевязка чистая", "Перевязка гнойная", "Wound dressing"],
+    "category": "procedure",
+    "icdCode": "93.57"
+  },
+  {
+    "name": "Surgical Suture Removal",
+    "synonyms": ["Снятие швов", "Снятие хирургических швов", "Suture removal"],
+    "category": "procedure",
+    "icdCode": "97.89"
+  },
+  {
+    "name": "Physical Therapy Session",
+    "synonyms": ["Физиолечение", "Процедура физиотерапии", "УВЧ", "Магнитотерапия", "Электрофорез"],
+    "category": "procedure",
+    "icdCode": "93.39"
+  }
+]
