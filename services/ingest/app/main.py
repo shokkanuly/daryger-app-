@@ -10,6 +10,7 @@ from rapidfuzz import fuzz
 from .parsers.pdf import parse_pdf
 from .parsers.docx import parse_docx
 from .parsers.xlsx import parse_xlsx
+from .parsers.docling import parse_with_docling
 
 app = FastAPI(title="Daryger Ingest Service", version="1.0.0")
 
@@ -33,6 +34,13 @@ async def parse_document(file: UploadFile = File(...)):
 
     try:
         rows = []
+        # Try Docling first if suffix is supported
+        if suffix in [".pdf", ".docx", ".xlsx", ".xls"]:
+            docling_rows = parse_with_docling(tmp_path)
+            if docling_rows is not None:
+                return {"filename": filename, "rows": docling_rows, "parser": "docling"}
+
+        # Fallback lightweight parsers
         if suffix == ".pdf":
             rows = parse_pdf(tmp_path)
         elif suffix == ".docx":
@@ -44,7 +52,7 @@ async def parse_document(file: UploadFile = File(...)):
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported file format: {suffix}")
 
-        return {"filename": filename, "rows": rows}
+        return {"filename": filename, "rows": rows, "parser": "fallback"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -61,6 +69,14 @@ def parse_zip(zip_path: str) -> List[Dict]:
                 fpath = os.path.join(root, fname)
                 sub_suffix = os.path.splitext(fname)[1].lower()
                 try:
+                    # Try Docling first
+                    if sub_suffix in [".pdf", ".docx", ".xlsx", ".xls"]:
+                        docling_res = parse_with_docling(fpath)
+                        if docling_res is not None:
+                            rows.extend(docling_res)
+                            continue
+
+                    # Fallback
                     if sub_suffix == ".pdf":
                         rows.extend(parse_pdf(fpath))
                     elif sub_suffix == ".docx":

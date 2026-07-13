@@ -34,21 +34,33 @@ export default function DocumentUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [stats, setStats] = useState<{
+    totalDocuments: number;
+    pendingDocuments: number;
+    totalRecords: number;
+    verifiedRecords: number;
+    normalizationRate: number;
+    pendingQueueItems: number;
+  } | null>(null);
 
   const fetchClinicsAndDocs = async () => {
     try {
-      // Fetch clinics (both public and partner clinics are selectable, filter to partner)
       const resC = await fetch("/api/partners");
       if (resC.ok) {
         const data = await resC.json();
         setClinics(data);
       }
       
-      // Fetch recent uploads
       const resD = await fetch("/api/partners/documents");
       if (resD.ok) {
         const data = await resD.json();
         setDocuments(data);
+      }
+
+      const resS = await fetch("/api/partners/dashboard/stats");
+      if (resS.ok) {
+        const data = await resS.json();
+        setStats(data);
       }
     } catch (e) {
       console.error(e);
@@ -57,6 +69,10 @@ export default function DocumentUploadPage() {
 
   useEffect(() => {
     fetchClinicsAndDocs();
+    
+    // Live polling every 4 seconds to make ingestion updates visible
+    const interval = setInterval(fetchClinicsAndDocs, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -113,6 +129,56 @@ export default function DocumentUploadPage() {
         <Button onClick={fetchClinicsAndDocs} variant="outline" size="sm" className="flex items-center gap-1">
           <RefreshCw className="h-3.5 w-3.5" /> Refresh status
         </Button>
+      </div>
+
+      {/* Dynamic Live Metrics Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <Card className="bg-slate-50/50 border-slate-200" padding={false}>
+          <div className="p-4 pb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Processed Files</span>
+            <CardTitle className="text-2xl font-black text-slate-900 mt-1">
+              {stats ? stats.totalDocuments : <Loader2 className="h-5 w-5 animate-spin text-teal-600" />}
+            </CardTitle>
+          </div>
+          <p className="text-[10px] text-slate-500 px-4 pb-4">Total clinic price documents uploaded</p>
+        </Card>
+
+        <Card className="bg-slate-50/50 border-slate-200" padding={false}>
+          <div className="p-4 pb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Queue Positions</span>
+            <CardTitle className="text-2xl font-black text-slate-900 mt-1">
+              {stats ? stats.pendingDocuments : <Loader2 className="h-5 w-5 animate-spin text-teal-600" />}
+            </CardTitle>
+          </div>
+          <p className="text-[10px] text-slate-500 px-4 pb-4">Files currently waiting or processing</p>
+        </Card>
+
+        <Card className="bg-slate-50/50 border-slate-200" padding={false}>
+          <div className="p-4 pb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Normalisation Rate</span>
+            <CardTitle className="text-2xl font-black text-teal-700 mt-1">
+              {stats ? `${stats.normalizationRate}%` : <Loader2 className="h-5 w-5 animate-spin text-teal-600" />}
+            </CardTitle>
+          </div>
+          <div className="px-4 pb-4">
+            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-teal-600 h-1.5 rounded-full transition-all duration-500" 
+                style={{ width: `${stats ? stats.normalizationRate : 0}%` }}
+              ></div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="bg-slate-50/50 border-slate-200" padding={false}>
+          <div className="p-4 pb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verification Queue</span>
+            <CardTitle className="text-2xl font-black text-amber-700 mt-1">
+              {stats ? stats.pendingQueueItems : <Loader2 className="h-5 w-5 animate-spin text-teal-600" />}
+            </CardTitle>
+          </div>
+          <p className="text-[10px] text-slate-500 px-4 pb-4">Unmapped or anomaly records pending</p>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
