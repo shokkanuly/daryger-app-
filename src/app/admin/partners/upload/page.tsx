@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { UploadCloud, CheckCircle, FileText, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
@@ -122,7 +122,7 @@ export default function DocumentUploadPage() {
             <CardTitle>Ingest Price Archive</CardTitle>
             <CardDescription>Select clinic and upload document</CardDescription>
           </CardHeader>
-          <CardContent>
+          <div>
             <form onSubmit={handleUpload} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase">Partner Clinic</label>
@@ -189,16 +189,16 @@ export default function DocumentUploadPage() {
                 ) : "Process Document"}
               </Button>
             </form>
-          </CardContent>
+          </div>
         </Card>
 
         {/* Status Tracker */}
-        <Card className="lg:col-span-2 shadow-sm border-slate-200">
-          <CardHeader>
+        <Card className="lg:col-span-2 shadow-sm border-slate-200" padding={false}>
+          <div className="p-5 border-b border-slate-100">
             <CardTitle>Recent Ingestion Logs</CardTitle>
             <CardDescription>Live processing logs of uploaded files</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
+          </div>
+          <div>
             {documents.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-sm">
                 No documents uploaded yet.
@@ -251,7 +251,7 @@ export default function DocumentUploadPage() {
                 </table>
               </div>
             )}
-          </CardContent>
+          </div>
         </Card>
       </div>
     </main>
