@@ -153,19 +153,23 @@ model Service {
 }
 
 model Clinic {
-  id           String        @id @default(uuid())
-  name         String
-  city         String
-  address      String?
-  phone        String?
-  workingHours String?
-  sourceUrl    String?
-  sourceType   String        // PUBLIC | PARTNER
-  lat          Float?
-  lng          Float?
-  isActive     Boolean       @default(true)
-  rawCaptures  RawCapture[]
-  priceRecords PriceRecord[]
+  id             String          @id @default(uuid())
+  name           String
+  city           String
+  address        String?
+  phone          String?
+  workingHours   String?
+  sourceUrl      String?
+  sourceType     String          // PUBLIC | PARTNER
+  lat            Float?
+  lng            Float?
+  isActive       Boolean         @default(true)
+  bin            String?
+  contactEmail   String?
+  contactPhone   String?
+  rawCaptures    RawCapture[]
+  priceRecords   PriceRecord[]
+  priceDocuments PriceDocument[]
 }
 
 model RawCapture {
@@ -189,16 +193,39 @@ model MatchQueueItem {
 }
 
 model PriceRecord {
-  id             String   @id @default(uuid())
-  serviceNameRaw String
-  serviceId      String?
-  service        Service? @relation(fields: [serviceId], references: [id])
-  clinicId       String
-  clinic         Clinic   @relation(fields: [clinicId], references: [id])
-  priceKzt       Decimal
-  currency       String   @default("KZT")
-  durationDays   Int?
-  parsedAt       DateTime @default(now())
-  isActive       Boolean  @default(true)
-  sourceType     String   // CRAWL | PARTNER_DOC
+  id                  String         @id @default(uuid())
+  serviceNameRaw      String
+  serviceId           String?
+  service             Service?       @relation(fields: [serviceId], references: [id])
+  clinicId            String
+  clinic              Clinic         @relation(fields: [clinicId], references: [id])
+  priceKzt            Decimal
+  currency            String         @default("KZT")
+  durationDays        Int?
+  parsedAt            DateTime       @default(now())
+  isActive            Boolean        @default(true)
+  sourceType          String         // CRAWL | PARTNER_DOC
+  priceResidentKzt    Decimal?
+  priceNonresidentKzt Decimal?
+  priceOriginal       Decimal?
+  currencyOriginal    String?
+  isVerified          Boolean        @default(false)
+  verificationNote    String?
+  sourceDocId         String?
+  sourceDoc           PriceDocument? @relation(fields: [sourceDocId], references: [id])
 }
+
+model PriceDocument {
+  id            String        @id @default(uuid())
+  clinicId      String
+  clinic        Clinic        @relation(fields: [clinicId], references: [id])
+  fileName      String
+  fileFormat    String        // pdf | docx | xlsx | scan_pdf
+  effectiveDate DateTime?
+  parsedAt      DateTime?
+  parseStatus   String        @default("PENDING") // PENDING | PROCESSING | DONE | ERROR | NEEDS_REVIEW
+  parseLog      String?
+  rawContentKey String        // S3 key
+  priceRecords  PriceRecord[]
+}
+

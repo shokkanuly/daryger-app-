@@ -36,53 +36,18 @@ services:
       retries: 5
 
   # -------------------------------------------------------------------------
-  # FastAPI application
+  # Stateless Ingestion Service (PDF, DOCX, XLSX, OCR)
   # -------------------------------------------------------------------------
-  api:
+  ingest:
     build:
-      context: ./fastapi_backend
+      context: ./services/ingest
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://meduser:medpass@db:5432/medpartners
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      UPLOAD_DIR: /app/uploads
       APP_ENV: development
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
-  # -------------------------------------------------------------------------
-  # Celery worker
-  # -------------------------------------------------------------------------
-  worker:
-    build:
-      context: ./fastapi_backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
-    environment:
-      DATABASE_URL: postgresql+asyncpg://meduser:medpass@db:5432/medpartners
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-      UPLOAD_DIR: /app/uploads
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   # -------------------------------------------------------------------------
   # MinIO (S3-compatible Object Storage)
