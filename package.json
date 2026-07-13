@@ -11,6 +11,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force && tsx prisma/seed.ts",
     "test:integration": "tsx scripts/run-integration-tests.ts",
+    "test:phase1": "tsx scripts/run-phase1-tests.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
