@@ -35,6 +35,28 @@ export default function LoginPage() {
     router.push(data.redirect);
   }
 
+  async function handleQuickLogin(demoEmail: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: demoEmail, password: "demo123" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
+      router.push(data.redirect);
+    } catch (err) {
+      setError("Failed to execute quick sign-in");
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4">
       <div className="mb-8 text-center">
@@ -66,13 +88,51 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-6 rounded-lg bg-teal-50 p-3 text-xs text-teal-800">
-          <p className="font-medium mb-1">{t("auth.login.demo")}</p>
-          <p>Patient: patient@daryger.kz / demo123</p>
-          <p>Doctor: doctor@daryger.kz / demo123</p>
+        <div className="mt-6 border-t border-slate-100 pt-6">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center">
+            🚀 Quick Cabinets Switcher
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => handleQuickLogin("patient@daryger.kz")}
+              className="text-xs border-teal-100 bg-teal-50/10 hover:bg-teal-50 text-teal-800"
+            >
+              🔑 Patient Dashboard
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => handleQuickLogin("doctor@daryger.kz")}
+              className="text-xs border-teal-100 bg-teal-50/10 hover:bg-teal-50 text-teal-800"
+            >
+              🩺 Doctor Cabinet
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => handleQuickLogin("admin@daryger.kz")}
+              className="text-xs border-teal-100 bg-teal-50/10 hover:bg-teal-50 text-teal-800"
+            >
+              🛡️ Admin Console
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => handleQuickLogin("partner@daryger.kz")}
+              className="text-xs border-teal-100 bg-teal-50/10 hover:bg-teal-50 text-teal-800"
+            >
+              🏢 Partner Portal
+            </Button>
+          </div>
         </div>
 
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-slate-500">
           {t("auth.login.noAccount")}{" "}
           <Link href="/register" className="text-teal-600 hover:underline">
             {t("auth.login.register")}
