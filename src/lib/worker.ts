@@ -2,14 +2,20 @@ import { Worker } from "bullmq";
 import Redis from "ioredis";
 import { runCrawlJob } from "./catalog/ingest";
 import { parseDocumentJob } from "./jobs/parse-document";
+import { db } from "./db";
+import { IkomekAdapter } from "./adapters/appeals/ikomek";
+import { CrmAdapter } from "./adapters/appeals/crm";
+import { EotinishAdapter } from "./adapters/appeals/eotinish";
+import { getQueue } from "./queue";
 
 const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 let crawlWorker: Worker | null = null;
 let docWorker: Worker | null = null;
+let opsWorker: Worker | null = null;
 
 export function startWorker() {
-  if (crawlWorker && docWorker) {
+  if (crawlWorker && docWorker && opsWorker) {
     console.log("BullMQ Workers are already running.");
     return;
   }
@@ -47,4 +53,67 @@ export function startWorker() {
     docWorker.on("completed", (job) => console.log(`[Worker] Document parse Job ${job.id} completed`));
     docWorker.on("failed", (job, err) => console.error(`[Worker] Document parse Job ${job?.id} failed:`, err));
   }
+
+  if (!opsWorker) {
+    console.log("Starting BullMQ ops-queue Worker...");
+    opsWorker = new Worker(
+      "ops-queue",
+      async (job) => {
+        if (job.name === "poll-appeals-and-sla") {
+          console.log("[Worker] Running scheduled appeals poll and SLA check...");
+          // 1. Run SLA check
+          const now = new Date();
+          await db.appeal.updateMany({
+            where: {
+              status: { in: ["NEW", "IN_PROGRESS"] },
+              slaDueAt: { lt: now }
+            },
+            data: { status: "OVERDUE" }
+          });
+
+          // 2. Poll adapters
+          const adapters = [new IkomekAdapter(), new CrmAdapter(), new EotinishAdapter()];
+          for (const adapter of adapters) {
+            try {
+              const drafts = await adapter.fetchNew();
+              for (const draft of drafts) {
+                const existing = await db.appeal.findFirst({
+                  where: {
+                    externalRef: draft.externalRef,
+                    channel: draft.channel,
+                  },
+                });
+                if (!existing) {
+                  await db.appeal.create({
+                    data: {
+                      channel: draft.channel,
+                      externalRef: draft.externalRef,
+                      subject: draft.subject,
+                      body: draft.body,
+                      status: "NEW",
+                      slaDueAt: draft.slaDueAt,
+                      createdAt: draft.createdAt || new Date(),
+                    },
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(`[Worker] Error polling appeals for channel ${adapter.channel}:`, err);
+            }
+          }
+        }
+      },
+      { connection: connection as any }
+    );
+
+    opsWorker.on("completed", (job) => console.log(`[Worker] Ops Job ${job.id} completed`));
+    opsWorker.on("failed", (job, err) => console.error(`[Worker] Ops Job ${job?.id} failed:`, err));
+
+    // Register repeatable job
+    const opsQueue = getQueue("ops-queue");
+    opsQueue.add("poll-appeals-and-sla", {}, {
+      repeat: { pattern: "*/5 * * * *" }
+    }).catch(err => console.error("[Worker] Failed to add repeatable job:", err));
+  }
 }
+

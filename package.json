@@ -13,6 +13,7 @@
     "test:integration": "tsx scripts/run-integration-tests.ts",
     "test:phase1": "tsx scripts/run-phase1-tests.ts",
     "test:phase2": "tsx scripts/run-phase2-tests.ts",
+    "test:phase3": "tsx scripts/run-phase3-tests.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

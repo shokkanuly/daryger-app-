@@ -9,6 +9,9 @@ const db = new PrismaClient({ adapter });
 
 
 async function main() {
+  await db.appeal.deleteMany();
+  await db.screeningInvite.deleteMany();
+  await db.screeningProgram.deleteMany();
   await db.message.deleteMany();
   await db.consultation.deleteMany();
   await db.appointment.deleteMany();
@@ -31,6 +34,8 @@ async function main() {
       role: "PATIENT",
       town: "Shakhtinsk",
       phone: "+7 721 555 0101",
+      birthDate: new Date("1998-05-15"),
+      lastScreenedAt: new Date("2023-11-10"),
     },
   });
 
@@ -42,6 +47,8 @@ async function main() {
       role: "PATIENT",
       town: "Temirtau",
       phone: "+7 721 555 0202",
+      birthDate: new Date("1981-08-20"),
+      lastScreenedAt: new Date("2022-04-05"),
     },
   });
 
@@ -256,6 +263,18 @@ async function main() {
       sourceType: "PUBLIC",
       lat: 49.7995,
       lng: 73.0901,
+    },
+  });
+
+  // Seeding Screening Programs
+  await db.screeningProgram.create({
+    data: {
+      name: "hepatitis-b-2025",
+      criteria: {
+        minAge: 40,
+        city: ["Temirtau", "Shakhtinsk"],
+        lastScreenedBefore: "2025-01-01",
+      },
     },
   });
 
