@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const partnerId = params.id;
+    const { id: partnerId } = await params;
     const records = await db.priceRecord.findMany({
       where: {
         clinicId: partnerId,

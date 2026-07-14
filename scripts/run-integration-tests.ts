@@ -90,7 +90,7 @@ async function runTests() {
     });
 
     const testQueueName = "integration-test-queue";
-    const queue = new Queue(testQueueName, { connection });
+    const queue = new Queue(testQueueName, { connection: connection as any });
     
     // Resolve when the job completes
     const jobPromise = new Promise<any>((resolve, reject) => {
@@ -99,7 +99,7 @@ async function runTests() {
         async (job) => {
           return { received: job.data.value, processedAt: new Date().toISOString() };
         },
-        { connection }
+        { connection: connection as any }
       );
 
       worker.on("completed", (job, result) => {

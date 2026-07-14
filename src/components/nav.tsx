@@ -15,6 +15,12 @@ export async function Nav({ role }: NavProps) {
   const locale = getLocaleFromCookieValue(cookieStore.get(LOCALE_COOKIE)?.value);
   const t = getT(locale);
 
+  // Guest links — visible without login
+  const guestLinks = [
+    { href: "/price", label: "Сравнить цены" },
+    { href: "/login", label: t("nav.signIn") },
+  ];
+
   const links =
     role === "DOCTOR"
       ? [
@@ -41,7 +47,7 @@ export async function Nav({ role }: NavProps) {
           { href: "/patient", label: t("nav.home") },
           { href: "/patient/consult", label: t("nav.getHelp") },
           { href: "/patient/appointments", label: t("nav.appointments") },
-          { href: "/price", label: "Compare Prices" },
+          { href: "/price", label: "Сравнить цены" },
         ];
 
   return (
@@ -52,9 +58,10 @@ export async function Nav({ role }: NavProps) {
             <Stethoscope className="h-4 w-4 text-white" />
           </div>
           <span className="font-bold text-slate-900">Daryger</span>
-          <span className="hidden text-xs text-slate-400 sm:inline">Дәрігер</span>
+          <span className="hidden text-xs text-slate-400 sm:inline">· MedServicePrice.kz</span>
         </Link>
 
+        {/* Logged-in nav links */}
         {session && role && (
           <nav className="hidden items-center gap-6 md:flex">
             {links.map((link) => (
@@ -62,6 +69,17 @@ export async function Nav({ role }: NavProps) {
                 {link.label}
               </Link>
             ))}
+          </nav>
+        )}
+        {/* Guest nav links — visible even without login */}
+        {!session && (
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link href="/price" className="text-sm font-semibold text-teal-700 hover:text-teal-800 transition-colors">
+              💊 Сравнить цены
+            </Link>
+            <Link href="/register" className="text-sm text-slate-600 hover:text-teal-600 transition-colors">
+              {t("nav.register")}
+            </Link>
           </nav>
         )}
 
@@ -87,8 +105,8 @@ export async function Nav({ role }: NavProps) {
               <Link href="/login" className="text-sm text-slate-600 hover:text-teal-600">
                 {t("nav.signIn")}
               </Link>
-              <Link href="/register" className="rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700">
-                {t("nav.register")}
+              <Link href="/price" className="rounded-lg bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700">
+                Сравнить цены
               </Link>
             </>
           )}

@@ -39,7 +39,7 @@ export async function parseDocumentJob(docId: string) {
     // 2. Post file to python ingest service
     const ingestUrl = process.env.INGEST_SERVICE_URL || "http://localhost:8000";
     const formData = new FormData();
-    const blob = new Blob([buffer]);
+    const blob = new Blob([Buffer.from(buffer)]);
     formData.append("file", blob, doc.fileName);
 
     const parseRes = await fetch(`${ingestUrl}/parse`, {
