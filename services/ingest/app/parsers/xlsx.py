@@ -45,10 +45,58 @@ def parse_xlsx(file_path: str) -> List[Dict]:
                 price_nonres_col = pnr_col
                 break
 
-        # If no header detected, fallback to default columns (name=0, price=1)
-        if header_row_idx == -1:
-            name_col = 0
-            price_res_col = 1
+        # Heuristic auto-profiling fallback if header detection failed
+        if header_row_idx == -1 or name_col == -1 or price_res_col == -1:
+            col_types = {c: {"num_count": 0, "text_len_sum": 0, "empty_count": 0, "total": 0} for c in range(sheet.max_column)}
+            scan_limit = min(50, sheet.max_row)
+            
+            for r_idx in range(1, scan_limit + 1):
+                for c_idx in range(1, sheet.max_column + 1):
+                    val = sheet.cell(r_idx, c_idx).value
+                    c_key = c_idx - 1
+                    if val is None:
+                        col_types[c_key]["empty_count"] += 1
+                    else:
+                        val_str = str(val).strip()
+                        col_types[c_key]["total"] += 1
+                        clean_num = re.sub(r'[^\d\.]', '', val_str.replace(",", "."))
+                        if clean_num and len(clean_num) < 10:
+                            try:
+                                float(clean_num)
+                                col_types[c_key]["num_count"] += 1
+                            except ValueError:
+                                pass
+                        col_types[c_key]["text_len_sum"] += len(val_str)
+
+            best_name_col = -1
+            max_text_len = -1
+            for c, stats in col_types.items():
+                if stats["total"] > 0:
+                    avg_len = stats["text_len_sum"] / stats["total"]
+                    num_ratio = stats["num_count"] / stats["total"]
+                    if num_ratio < 0.3 and avg_len > 12 and stats["text_len_sum"] > max_text_len:
+                        max_text_len = stats["text_len_sum"]
+                        best_name_col = c
+
+            best_price_col = -1
+            max_num_count = -1
+            for c, stats in col_types.items():
+                if c != best_name_col and stats["total"] > 0:
+                    num_ratio = stats["num_count"] / stats["total"]
+                    if num_ratio > 0.4 and stats["num_count"] > max_num_count:
+                        max_num_count = stats["num_count"]
+                        best_price_col = c
+
+            if best_name_col != -1:
+                name_col = best_name_col
+            else:
+                name_col = 0
+
+            if best_price_col != -1:
+                price_res_col = best_price_col
+            else:
+                price_res_col = 1
+                
             start_row = 1
         else:
             start_row = header_row_idx + 1
@@ -70,10 +118,17 @@ def parse_xlsx(file_path: str) -> List[Dict]:
             if len(name_str) < 4:
                 continue
 
-            # Parse prices
+            # Parse and validate prices
             try:
-                res_str = re.sub(r'[^\d\.]', '', str(price_res_val).replace(",", ".")) if price_res_val is not None else ""
-                nonres_str = re.sub(r'[^\d\.]', '', str(price_nonres_val).replace(",", ".")) if price_nonres_val is not None else ""
+                res_clean = str(price_res_val).strip() if price_res_val is not None else ""
+                nonres_clean = str(price_nonres_val).strip() if price_nonres_val is not None else ""
+
+                # Avoid parsing descriptions as price (too many letters)
+                if len(re.findall(r'[a-zA-Zа-яА-ЯёЁ]', res_clean)) > 4:
+                    continue
+
+                res_str = re.sub(r'[^\d\.]', '', res_clean.replace(",", "."))
+                nonres_str = re.sub(r'[^\d\.]', '', nonres_clean.replace(",", "."))
                 
                 res_price = float(res_str) if res_str else None
                 nonres_price = float(nonres_str) if nonres_str else res_price
