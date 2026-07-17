@@ -42,8 +42,10 @@ export default function DocumentUploadPage() {
     normalizationRate: number;
     pendingQueueItems: number;
   } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchClinicsAndDocs = async () => {
+    setRefreshing(true);
     try {
       const resC = await fetch("/api/partners");
       if (resC.ok) {
@@ -64,6 +66,8 @@ export default function DocumentUploadPage() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -126,8 +130,15 @@ export default function DocumentUploadPage() {
             Upload price-lists (PDF, DOCX, XLSX, or ZIP archives) for partner clinics.
           </p>
         </div>
-        <Button onClick={fetchClinicsAndDocs} variant="outline" size="sm" className="flex items-center gap-1">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh status
+        <Button 
+          onClick={fetchClinicsAndDocs} 
+          variant="outline" 
+          size="sm" 
+          disabled={refreshing}
+          className="flex items-center gap-1.5"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} /> 
+          {refreshing ? "Refreshing..." : "Refresh status"}
         </Button>
       </div>
 
