@@ -32,6 +32,44 @@ export async function POST(req: NextRequest) {
   const urgency = calculateUrgency(answers);
   const chiefComplaint = getComplaintLabel(answers.chief_complaint);
 
+  // Check if clinical AI trigger keywords are met
+  const symptomText = (symptoms ?? "").toLowerCase();
+  const answersText = answers ? JSON.stringify(answers).toLowerCase() : "";
+  const combinedText = symptomText + " " + answersText;
+
+  const triggerKeywords = [
+    "hepatitis", "jaundice", "liver", "biliary", "cirrhosis", "hbsag", "alt", "ast", "ascites", "hbv",
+    "желтуха", "печень", "гепатит", "цирроз", "алт", "аст", "водянка",
+    "сары ауру", "бауыр", "өт", "қан құю"
+  ];
+
+  const isHepTrigger = triggerKeywords.some(keyword => combinedText.includes(keyword));
+
+  let specialistRequired = false;
+  let riskAssessment = null;
+
+  if (isHepTrigger) {
+    try {
+      const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+      const assessRes = await fetch(`${baseUrl}/api/clinical/assess`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: req.headers.get("cookie") ?? "",
+        },
+        body: JSON.stringify({ patientId: session.id, symptoms, answers }),
+      });
+      if (assessRes.ok) {
+        riskAssessment = await assessRes.json();
+        if (riskAssessment && riskAssessment.score >= 3.0) {
+          specialistRequired = true;
+        }
+      }
+    } catch (err) {
+      console.error("Clinical AI assessment fetch failed during triage:", err);
+    }
+  }
+
   // Run Gemini AI triage analysis in parallel with DB operations
   let aiAnalysis: Record<string, unknown> | null = null;
   try {
@@ -40,21 +78,29 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Forward session cookie so requireSession() works in the triage route
         Cookie: req.headers.get("cookie") ?? "",
       },
       body: JSON.stringify({ answers, symptoms }),
     });
     if (aiRes.ok) aiAnalysis = await aiRes.json();
   } catch {
-    // Non-fatal — triage proceeds with rule-based urgency
+    // Non-fatal
   }
 
-  const availableDoctor = await db.doctorProfile.findFirst({
-    where: { isAvailable: true },
-    include: { user: true },
-    orderBy: { user: { name: "asc" } },
-  });
+  let availableDoctor = null;
+  if (specialistRequired) {
+    availableDoctor = await db.doctorProfile.findFirst({
+      where: { isAvailable: true, specialty: "Hepatologist" },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    });
+  } else {
+    availableDoctor = await db.doctorProfile.findFirst({
+      where: { isAvailable: true },
+      include: { user: true },
+      orderBy: { user: { name: "asc" } },
+    });
+  }
 
   // Merge rule-based triage answers + AI analysis into triageData JSON
   const triageData = JSON.stringify({ answers, aiAnalysis });
@@ -68,6 +114,7 @@ export async function POST(req: NextRequest) {
       chiefComplaint,
       symptoms: symptoms || null,
       triageData,
+      specialistRequired,
     },
   });
 

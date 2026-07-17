@@ -17,17 +17,48 @@ export async function POST(req: NextRequest) {
     const effectiveDateStr = formData.get("effectiveDate") as string;
     const file = formData.get("file") as File;
 
-    if (!clinicId || !file) {
-      return NextResponse.json({ error: "clinicId and file are required" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "file is required" }, { status: 400 });
     }
 
-    const clinic = await db.clinic.findUnique({ where: { id: clinicId } });
-    if (!clinic) {
-      return NextResponse.json({ error: "Clinic not found" }, { status: 404 });
+    const fileName = file.name;
+    let finalClinicId = clinicId;
+
+    if (!finalClinicId || finalClinicId === "choose" || finalClinicId === "null" || finalClinicId === "undefined" || finalClinicId === "") {
+      const nameLower = fileName.toLowerCase();
+      let detectedClinic = null;
+
+      if (nameLower.includes("invitro")) {
+        detectedClinic = await db.clinic.findFirst({ where: { name: { contains: "Invitro", mode: "insensitive" } } });
+      } else if (nameLower.includes("kdl")) {
+        detectedClinic = await db.clinic.findFirst({ where: { name: { contains: "KDL", mode: "insensitive" } } });
+      } else if (nameLower.includes("doq")) {
+        detectedClinic = await db.clinic.findFirst({ where: { name: { contains: "Doq", mode: "insensitive" } } });
+      }
+
+      if (!detectedClinic) {
+        detectedClinic = await db.clinic.findFirst();
+      }
+
+      if (!detectedClinic) {
+        detectedClinic = await db.clinic.create({
+          data: {
+            name: "Default Partner Clinic",
+            city: "Karaganda",
+            sourceType: "PARTNER",
+          },
+        });
+      }
+
+      finalClinicId = detectedClinic.id;
+    } else {
+      const clinic = await db.clinic.findUnique({ where: { id: finalClinicId } });
+      if (!clinic) {
+        return NextResponse.json({ error: "Clinic not found" }, { status: 404 });
+      }
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const fileName = file.name;
     const fileExtension = fileName.substring(fileName.lastIndexOf(".")).toLowerCase();
 
     let fileFormat = "pdf";
@@ -37,13 +68,13 @@ export async function POST(req: NextRequest) {
 
     // Upload raw file to S3
     const uuid = crypto.randomUUID();
-    const s3Key = `partner-docs/${clinicId}/${uuid}${fileExtension}`;
+    const s3Key = `partner-docs/${finalClinicId}/${uuid}${fileExtension}`;
     await putObject(s3Key, fileBuffer, file.type || "application/octet-stream");
 
     // Log the PriceDocument
     const priceDoc = await db.priceDocument.create({
       data: {
-        clinicId,
+        clinicId: finalClinicId,
         fileName,
         fileFormat,
         effectiveDate: effectiveDateStr ? new Date(effectiveDateStr) : null,

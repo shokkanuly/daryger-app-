@@ -57,6 +57,9 @@ export default function DoctorConsultChatPage() {
   const [videoOpen, setVideoOpen] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
+  const [assessment, setAssessment] = useState<any>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [explanation, setExplanation] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Parse AI analysis from triageData JSON
@@ -70,6 +73,25 @@ export default function DoctorConsultChatPage() {
     }
   })();
 
+  async function loadExplanation(score: number, flags: any) {
+    setExplaining(true);
+    try {
+      const res = await fetch("/api/clinical/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ score, flags }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setExplanation(data.explanation);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExplaining(false);
+    }
+  }
+
   async function load() {
     const res = await fetch(`/api/consultations/${id}`);
     if (res.ok) {
@@ -80,6 +102,20 @@ export default function DoctorConsultChatPage() {
       if (data.followupApproved) setFollowupApproved(data.followupApproved);
     }
   }
+
+  useEffect(() => {
+    if (consultation?.patient?.id) {
+      fetch(`/api/clinical/assessments/${consultation.patient.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.length > 0) {
+            setAssessment(data[0]);
+            loadExplanation(data[0].score, data[0].flags);
+          }
+        })
+        .catch((err) => console.error("Failed to load assessments:", err));
+    }
+  }, [consultation?.patient?.id]);
 
   useEffect(() => {
     load();
@@ -315,6 +351,58 @@ export default function DoctorConsultChatPage() {
                   <p className="text-xs text-slate-500">
                     <span className="font-medium">{t("chat.aiSpecialist")}:</span> {aiAnalysis.specialist}
                   </p>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Clinical Risk Assessment Panel */}
+          {assessment && (
+            <Card className="border-red-200">
+              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2 text-sm">
+                <Brain className="h-4 w-4 text-red-500" />
+                Клиническая оценка риска
+                <span className="ml-auto text-xs font-normal text-slate-400">{assessment.modelVersion}</span>
+              </h3>
+              <div className="space-y-3">
+                <div className={`rounded-lg px-3 py-2 text-sm font-semibold border ${
+                  assessment.score >= 3.0 ? "text-red-700 bg-red-50 border-red-100" : "text-amber-700 bg-amber-50 border-amber-100"
+                }`}>
+                  Оценка риска HBV: {assessment.score.toFixed(1)} / 10.5
+                </div>
+
+                {explanation ? (
+                  <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100 italic">
+                    "{explanation}"
+                  </p>
+                ) : explaining ? (
+                  <div className="text-xs text-slate-400 italic py-2 flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Формирование пояснения ИИ...
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => loadExplanation(assessment.score, assessment.flags)}
+                    className="text-xs text-teal-600 hover:text-teal-700 font-medium underline"
+                  >
+                    Запросить пояснение ИИ
+                  </button>
+                )}
+
+                {assessment.flags && (
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 mb-1">Сработавшие факторы:</p>
+                    <ul className="space-y-1.5">
+                      {(typeof assessment.flags === "string" ? JSON.parse(assessment.flags) : assessment.flags).map((f: any, idx: number) => (
+                        <li key={idx} className="text-xs text-slate-700 flex flex-col gap-0.5 bg-slate-50 p-2 rounded border border-slate-100">
+                          <div className="flex justify-between font-medium text-slate-850">
+                            <span>{f.name}</span>
+                            <span className="text-red-600 font-semibold">+{f.weight}</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 leading-normal">{f.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
             </Card>

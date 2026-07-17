@@ -105,6 +105,8 @@ model Consultation {
   prescription   String?
   videoRoomUrl   String?
   followupApproved Boolean            @default(false) @map("followup_approved")
+  specialistRequired Boolean            @default(false)
+  referredToId       String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
@@ -262,5 +264,16 @@ model ScreeningInvite {
   sentAt      DateTime?
   respondedAt DateTime?
 }
+
+model RiskAssessment {
+  id           String   @id @default(uuid())
+  patientId    String
+  condition    String   // "hepatitis-b" for v1
+  score        Float
+  modelVersion String   // e.g. "hepb-protocol-2025-v1"
+  flags        Json     // which protocol factors contributed, for the explanation view
+  computedAt   DateTime @default(now())
+}
+
 
 

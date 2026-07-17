@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageCircle, Calendar, Clock, ArrowRight } from "lucide-react";
+import { Users, MessageCircle, Calendar, Clock, ArrowRight, ShieldAlert } from "lucide-react";
 import { URGENCY_COLORS, STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
 
@@ -14,8 +14,9 @@ export default async function DoctorDashboard() {
 
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const [waitingCount, todayAppointments, recentConsultations, profile] = await Promise.all([
-    db.consultation.count({ where: { status: "WAITING" } }),
+  const [waitingCount, referralCount, todayAppointments, recentConsultations, profile] = await Promise.all([
+    db.consultation.count({ where: { status: "WAITING", specialistRequired: false } }),
+    db.consultation.count({ where: { status: "WAITING", specialistRequired: true } }),
     db.appointment.count({ where: { doctorId: session.id, date: today, status: "SCHEDULED" } }),
     db.consultation.findMany({
       where: { OR: [{ doctorId: session.id }, { status: "WAITING" }] },
@@ -39,9 +40,10 @@ export default async function DoctorDashboard() {
         </p>
       </div>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid gap-4 sm:grid-cols-4">
         {[
           { icon: MessageCircle, label: "Waiting queue", value: waitingCount, color: "text-orange-600 bg-orange-50", href: "/doctor/consultations" },
+          { icon: ShieldAlert, label: "Specialist referrals", value: referralCount, color: "text-red-600 bg-red-50", href: "/doctor/consults" },
           { icon: Users, label: "Active consultations", value: activeCount, color: "text-teal-600 bg-teal-50", href: "/doctor/consultations" },
           { icon: Calendar, label: "Today's appointments", value: todayAppointments, color: "text-blue-600 bg-blue-50", href: "/doctor/schedule" },
         ].map(({ icon: Icon, label, value, color, href }) => (

@@ -77,8 +77,8 @@ export default function DocumentUploadPage() {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClinic || !file) {
-      setMessage({ type: "error", text: "Please select a clinic and file." });
+    if (!file) {
+      setMessage({ type: "error", text: "Please select a file to upload." });
       return;
     }
 
@@ -196,7 +196,6 @@ export default function DocumentUploadPage() {
                   value={selectedClinic}
                   onChange={(e) => setSelectedClinic(e.target.value)}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-teal-700"
-                  required
                 >
                   <option value="">-- Choose partner clinic --</option>
                   {clinics.map((c) => (
