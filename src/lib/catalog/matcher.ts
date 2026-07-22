@@ -1,121 +1,39 @@
 import { db } from "@/lib/db";
+import {
+  bidirectionalOverlap,
+  cleanRawName,
+  getSimilarity,
+  getWeakWords,
+  getWords,
+  wordsShareStem,
+} from "./normalize";
 
 export const CONFIDENCE_THRESHOLD = 0.70;
 
-// Preprocessing raw names to clean up symbols and common typos
-export function cleanRawName(rawName: string): string {
-  let cleaned = rawName.toLowerCase().trim();
+// Re-exported so existing importers (e.g. scripts) can keep importing from
+// "@/lib/catalog/matcher"; the implementation now lives in ./normalize.
+export { cleanRawName } from "./normalize";
 
-  // 1. Remove leading list numbers or SKU codes (e.g. "1.2.3. ", "A12.03.001 - ")
-  cleaned = cleaned.replace(/^[a-zA-Z0-9.-]*\d+[a-zA-Z0-9.-]*\s+/, "");
-  // Remove standalone billing/procedure codes like "ВОЗ", "В02", "В03", "B06"
-  cleaned = cleaned.replace(/\b(воз|во|в\d+|во\d+|а\d+|б\d+)\b/g, "");
-
-  // 2. Normalize common OCR errors
-  cleaned = cleaned.replace(/\b(ajit|ajlt|аjiт)\b/g, "алт");
-  cleaned = cleaned.replace(/\b(acm|acт)\b/g, "аст");
-
-  // 3. Normalize hyphen-joined words (e.g "аллерголог-иммунолог" -> space separated)
-  cleaned = cleaned.replace(/-/g, " ");
-
-  // 4. Remove multiple spaces
-  cleaned = cleaned.replace(/\s+/g, " ").trim();
-  return cleaned;
+interface CachedSynonym {
+  original: string;
+  cleaned: string;
+  words: string[];
+  weakWords: string[];
 }
 
-// Medical stop words that shouldn't impact main classification overlap
-const STOP_WORDS = new Set([
-  "в", "на", "и", "для", "у", "с", "из", "по", "о", "об", "при", "за", "не",
-  "или", "но", "да", "же",
-]);
-
-// Words that are STRUCTURAL rather than identifying (not as strong as stop words, but should be deprioritized)
-const WEAK_WORDS = new Set([
-  "исследование", "определение", "метод", "взятие", "забор", "материала",
-  "анализ", "соскоба", "посещение", "видеозвонок", "прием", "консультация",
-  "первичная", "повторная", "первичный", "повторный",
-]);
-
-function getWords(text: string, includeWeak = false): string[] {
-  return text
-    .split(/[^a-zA-Z0-9а-яА-ЯёЁ]+/)
-    .map(w => w.toLowerCase().trim())
-    .filter(w => w.length > 1 && !STOP_WORDS.has(w) && (includeWeak || !WEAK_WORDS.has(w)));
-}
-
-function getWeakWords(text: string): string[] {
-  return text
-    .split(/[^a-zA-Z0-9а-яА-ЯёЁ]+/)
-    .map(w => w.toLowerCase().trim())
-    .filter(w => w.length > 1 && !STOP_WORDS.has(w));
-}
-
-/**
- * Calculates string similarity using normalized Levenshtein distance
- */
-function getSimilarity(s1: string, s2: string): number {
-  const str1 = s1.toLowerCase().trim();
-  const str2 = s2.toLowerCase().trim();
-  if (str1 === str2) return 1.0;
-
-  const len1 = str1.length;
-  const len2 = str2.length;
-  if (len1 === 0) return len2 === 0 ? 1.0 : 0.0;
-  if (len2 === 0) return 0.0;
-
-  // Skip very long comparisons (perf guard - Levenshtein is O(n*m))
-  if (len1 > 80 || len2 > 80) return 0.0;
-
-  const matrix = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
-
-  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= len1; i++) {
-    for (let j = 1; j <= len2; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
-      );
-    }
-  }
-
-  const distance = matrix[len1][len2];
-  const maxLength = Math.max(len1, len2);
-  return 1.0 - distance / maxLength;
-}
-
-// Word stem - first 5 chars (handles Cyrillic morphology: кардиолог / кардиологу / кардиологом)
-function stem(w: string): string {
-  return w.length > 5 ? w.slice(0, 5) : w;
-}
-
-/**
- * Bidirectional token overlap: max(intersect/rawWords, intersect/synWords)
- * This allows short raw names like "кардиолог" to match "Прием кардиолога"
- */
-function bidirectionalOverlap(rawWords: string[], synWords: string[]): number {
-  if (rawWords.length === 0 || synWords.length === 0) return 0;
-
-  // Use stems for matching to handle Russian morphology
-  const rawStems = rawWords.map(stem);
-  const synStems = synWords.map(stem);
-
-  const intersectCount = rawStems.filter(rs => synStems.some(ss => ss === rs)).length;
-
-  const rawCoverage = intersectCount / rawWords.length;   // how much of raw is in synonym
-  const synCoverage = intersectCount / synWords.length;   // how much of synonym is in raw
-
-  // Take the max - if all raw words are in the synonym, that's a strong match
-  return Math.max(rawCoverage, synCoverage);
+interface CachedService {
+  id: string;
+  name: string;
+  cleanedName: string;
+  nameWords: string[];
+  nameWeakWords: string[];
+  synonyms: CachedSynonym[];
 }
 
 /**
  * standard matchService algorithm: Exact -> Synonym -> Bidirectional Token Overlap -> Fuzzy
  */
-let cachedServices: any[] | null = null;
+let cachedServices: CachedService[] | null = null;
 let lastCacheTime = 0;
 
 export async function matchService(rawName: string): Promise<{ serviceId: string | null; confidence: number }> {
@@ -145,6 +63,8 @@ export async function matchService(rawName: string): Promise<{ serviceId: string
   }
 
   const services = cachedServices;
+  if (!services) return { serviceId: null, confidence: 0 };
+
   const cleanedRaw = cleanRawName(rawName);
 
   if (!cleanedRaw || cleanedRaw.length < 2) {
@@ -223,10 +143,10 @@ export async function matchService(rawName: string): Promise<{ serviceId: string
   if (bestConfidence < CONFIDENCE_THRESHOLD && cleanedRaw.length <= 60) {
     for (const s of services) {
       // Only attempt fuzzy if there's at least one shared stem
-      const rawStems = (rawWords.length > 0 ? rawWords : rawWeakWords).map(stem);
+      const rawKeyWords = rawWords.length > 0 ? rawWords : rawWeakWords;
       const hasSharedStem =
-        s.nameWeakWords.some(w => rawStems.includes(stem(w))) ||
-        s.synonyms.some(syn => syn.weakWords.some(w => rawStems.includes(stem(w))));
+        s.nameWeakWords.some(w => rawKeyWords.some(rw => wordsShareStem(rw, w))) ||
+        s.synonyms.some(syn => syn.weakWords.some(w => rawKeyWords.some(rw => wordsShareStem(rw, w))));
 
       if (!hasSharedStem) continue;
 
