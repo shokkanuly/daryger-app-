@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DARYGER — Официальный Буклет Проекта (A4 Tri-Fold)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1565C0;
+      --primary-dark: #0D47A1;
+      --secondary: #42A5F5;
+      --accent: #26C6DA;
+      --bg-white: #FFFFFF;
+      --bg-light: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --text-dark: #263238;
+      --text-muted: #546E7A;
+      --border-color: #E2E8F0;
+      --shadow-sm: 0 2px 4px rgba(21, 101, 192, 0.06);
+      --shadow-md: 0 4px 12px rgba(21, 101, 192, 0.1);
+      --shadow-lg: 0 10px 25px rgba(21, 101, 192, 0.15);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text-dark);
+      background-color: #ECEFF1;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #1E293B;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .toolbar h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-print {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .btn-print:hover {
+      background: var(--secondary);
+    }
+
+    .page-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 30px;
+      padding: 30px 20px;
+    }
+
+    /* A4 Tri-Fold Dimensions (297mm x 210mm) */
+    .sheet {
+      width: 297mm;
+      height: 210mm;
+      background: var(--bg-white);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+    }
+
+    .sheet-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: -15px;
+    }
+
+    .panel {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      border-right: 1px dashed #E2E8F0;
+      background: var(--bg-white);
+    }
+
+    .panel:last-child {
+      border-right: none;
+    }
+
+    /* Headings */
+    h2, h3, h4 {
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    .panel-header {
+      margin-bottom: 12px;
+    }
+
+    .panel-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--primary);
+      background: rgba(21, 101, 192, 0.08);
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .panel-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text-dark);
+      line-height: 1.25;
+    }
+
+    .panel-title span {
+      color: var(--primary);
+    }
+
+    /* Front Cover Custom Styling */
+    .front-cover {
+      background: linear-gradient(145deg, #0D47A1 0%, #1565C0 60%, #1E88E5 100%);
+      color: white;
+      justify-content: space-between;
+      text-align: center;
+      padding: 32px 24px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .brand-logo-icon {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
+    .brand-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: white;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      background: rgba(255,255,255,0.12);
+      padding: 4px 12px;
+      border-radius: 20px;
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
+      line-height: 1.4;
+      color: #E3F2FD;
+      font-weight: 400;
+      margin: 20px 0;
+    }
+
+    .hero-illustration {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin: 15px 0;
+      backdrop-filter: blur(5px);
+    }
+
+    .hero-badge-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .hero-chip {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 8px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .cover-footer {
+      border-top: 1px solid rgba(255,255,255,0.2);
+      padding-top: 12px;
+      font-size: 10px;
+      color: #B3E5FC;
+    }
+
+    /* Card styling */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-desc {
+      font-size: 10.5px;
+      color: var(--text-dark);
+      line-height: 1.35;
+    }
+
+    /* Infographics & Diagrams */
+    .flow-vertical {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 10px 0;
+    }
+
+    .flow-step {
+      background: var(--bg-light);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 8px 8px 0;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .flow-step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .flow-step-text {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+
+    .flow-arrow {
+      text-align: center;
+      color: var(--secondary);
+      font-size: 10px;
+      margin: -3px 0;
+    }
+
+    /* Problem Infographic Box */
+    .problem-infographic {
+      background: #FFF5F5;
+      border: 1px solid #FED7D7;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    .prob-flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      font-size: 9.5px;
+      font-weight: 600;
+    }
+
+    .prob-node {
+      background: white;
+      border: 1px solid #FEB2B2;
+      padding: 6px 4px;
+      border-radius: 6px;
+      width: 28%;
+      color: #C53030;
+    }
+
+    .prob-node-bad {
+      background: #E53E3E;
+      color: white;
+      border: none;
+    }
+
+    .prob-arrow {
+      color: #E53E3E;
+      font-size: 11px;
+    }
+
+    /* Feature Grid */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .feature-item {
+      background: var(--bg-light);
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 10px;
+    }
+
+    .feature-item-title {
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Table Matrix */
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+      margin-top: 6px;
+    }
+
+    .matrix-table th {
+      background: var(--primary);
+      color: white;
+      padding: 6px 4px;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 700;
+      font-size: 9px;
+      text-align: left;
+    }
+
+    .matrix-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid var(--border-color);
+      line-height: 1.25;
+    }
+
+    .matrix-table tr:nth-child(even) {
+      background: #F8FAFC;
+    }
+
+    /* Tech Stack Badges */
+    .tech-pill-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    .tech-pill {
+      font-size: 8.5px;
+      font-weight: 700;
+      background: #E0F2FE;
+      color: #0369A1;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Back Panel Roadmap */
+    .roadmap-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .roadmap-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 10.5px;
+    }
+
+    .roadmap-icon {
+      color: #10B981;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .contact-box {
+      background: var(--primary-dark);
+      color: white;
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: auto;
+      text-align: center;
+    }
+
+    .contact-box h4 {
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .contact-box p {
+      font-size: 9.5px;
+      color: #B3E5FC;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: none;
+      }
+      .toolbar, .sheet-title {
+        display: none !important;
+      }
+      .page-container {
+        padding: 0;
+        gap: 0;
+      }
+      .sheet {
+        box-shadow: none;
+        margin: 0;
+        width: 297mm;
+        height: 210mm;
+      }
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <h1>🏥 DARYGER — Tri-Fold Brochure Layout (A4 Landscape)</h1>
+    <button class="btn-print" onclick="window.print()">🖨️ Печать / Сохранить в PDF (300 DPI)</button>
+  </div>
+
+  <div class="page-container">
+
+    <!-- OUTSIDE SHEET (Page 1): Panel 5 (Left), Back Panel (Center), Front Cover (Right) -->
+    <div class="sheet-title">Сторона 1: Внешняя обложка и интерактивные панели (Outside View)</div>
+    <div class="sheet">
+      
+      <!-- Panel 5: Как работает система -->
+      <div class="panel">
+        <div>
+          <div class="panel-header">
+            <span class="panel-tag">Панель 5 • Рабочий процесс</span>
+            <h2 class="panel-title">Как работает <span>система</span></h2>
+          </div>
+
+          <p style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 10px;">
+            Простой 5-шаговый путь пациента от появления симптомов до получения электронного рецепта:
+          </p>
+
+          <div class="flow-vertical">
+            <div class="flow-step">
+              <div class="flow-step-num">1</div>
+              <div class="flow-step-text">📱 <strong>Симптомы:</strong> Пациент вводит жалобы в приложении (KK/RU).</div>
+            </div>
+            <div class="flow-arrow">▼</div>
+
+            <div class="flow-step">
+              <div class="flow-step-num">2</div>
+              <div class="flow-step-text">🤖 <strong>AI-Анализ:</strong> Gemini 2.5 сортирует риски за 3 секунды.</div>
+            </div>
+            <div class="flow-arrow">▼</div>
+
+            <div class="flow-step">
+              <div class="flow-step-num">3</div>
+              <div class="flow-step-text">🚨 <strong>Приоритет:</strong> Острые случаи моментально вверху очереди.</div>
+            </div>
+            <div class="flow-arrow">▼</div>
+
+            <div class="flow-step">
+              <div class="flow-step-num">4</div>
+              <div class="flow-step-text">🩺 <strong>Консультация:</strong> Чат/Видеосвязь с врачом областного центра.</div>
+            </div>
+            <div class="flow-arrow">▼</div>
+
+            <div class="flow-step">
+              <div class="flow-step-num">5</div>
+              <div class="flow-step-text">💊 <strong>Рецепт:</strong> Загрузка PDF-рецепта прямо на смартфон.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="background: #F0F9FF; border-color: #BAE6FD; margin-top: auto;">
+          <div class="card-title" style="color: #0284C7;">⏱️ Скорость обслуживания</div>
+          <div class="card-desc">Среднее время от открытия приложения до первичной онлайн-консультации составляет всего <strong>7 минут</strong>.</div>
+        </div>
+      </div>
+
+      <!-- Back Panel: Будущее развитие проекта -->
+      <div class="panel">
+        <div>
+          <div class="panel-header">
+            <span class="panel-tag">Задняя панель • Стратегия</span>
+            <h2 class="panel-title">Будущее развитие <span>проекта</span></h2>
+          </div>
+
+          <p style="font-size: 10.5px; color: var(--text-muted); margin-bottom: 8px;">
+            Дорожная карта интеграций и масштабирования цифрового здравоохранения:
+          </p>
+
+          <div class="roadmap-list">
+            <div class="roadmap-item">
+              <span class="roadmap-icon">✅</span>
+              <div><strong>Интеграция с Damumed:</strong> Двусторонняя синхронизация медицинских карт и назначений.</div>
+            </div>
+            <div class="roadmap-item">
+              <span class="roadmap-icon">✅</span>
+              <div><strong>Стандарты HL7 / FHIR:</strong> Полная совместимость с экосистемой Минздрава РК.</div>
+            </div>
+            <div class="roadmap-item">
+              <span class="roadmap-icon">✅</span>
+              <div><strong>Казахстанские серверы:</strong> Хранение данных на локальных серверах согласно закону РК.</div>
+            </div>
+            <div class="roadmap-item">
+              <span class="roadmap-icon">✅</span>
+              <div><strong>Чат-боты Telegram / WhatsApp:</strong> Запуск триажа без установки приложения.</div>
+            </div>
+            <div class="roadmap-item">
+              <span class="roadmap-icon">✅</span>
+              <div><strong>Региональная аналитика:</strong> Тепловые карты заболеваемости для Акимата.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-box">
+          <h4>🏥 Проект DARYGER</h4>
+          <p>Разработано для инкубатора Terricon Valley & Акимата Карагандинской области</p>
+          <div style="font-size: 9px; margin-top: 6px; opacity: 0.8;">www.daryger.kz • info@daryger.kz</div>
+        </div>
+      </div>
+
+      <!-- Front Cover: Титульный лист -->
+      <div class="panel front-cover">
+        <div>
+          <div class="brand-badge">Медицинская ИИ-Платформа</div>
+          
+          <div class="brand-logo">
+            <div class="brand-logo-icon">🏥</div>
+            <div class="brand-title">DARYGER</div>
+          </div>
+
+          <div class="hero-subtitle">
+            Соединяем пациентов и врачей независимо от расстояния
+          </div>
+        </div>
+
+        <div class="hero-illustration">
+          <div style="font-size: 38px; margin-bottom: 8px;">📡 🩺 📱</div>
+          <div style="font-size: 11px; font-weight: 600; color: #E3F2FD;">
+            Интеллектуальный телемедицинский триаж для моногородов и сельских районов
+          </div>
+
+          <div class="hero-badge-grid">
+            <div class="hero-chip">🤖 Gemini 2.5 AI</div>
+            <div class="hero-chip">⚡ Автономный 3G</div>
+            <div class="hero-chip">🇰🇿 Қаз / Рус</div>
+            <div class="hero-chip">🔒 100% Защита</div>
+          </div>
+        </div>
+
+        <div class="cover-footer">
+          <div><strong>Карагандинская область • 2026</strong></div>
+          <div style="opacity: 0.8; font-size: 9px; margin-top: 2px;">Представлено для Terricon Valley & Управления Здравоохранения</div>
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- INSIDE SHEET (Page 2): Panel 1 (Left), Panel 2 (Center), Panel 3 (Right) -->
+    <div class="sheet-title">Сторона 2: Внутренние информационные панели (Inside View)</div>
+    <div class="sheet">
+
+      <!-- Panel 1: Проблема здравоохранения -->
+      <div class="panel">
+        <div>
+          <div class="panel-header">
+            <span class="panel-tag">Панель 1 • Контекст</span>
+            <h2 class="panel-title">Проблема <span>здравоохранения</span></h2>
+          </div>
+
+          <p style="font-size: 10px; color: var(--text-dark); margin-bottom: 8px; line-height: 1.35;">
+            В отдаленных моногородах (Шахтинск, Сарань, Абай) жители сталкиваются с барьерами при получении консультаций узких специалистов.
+          </p>
+
+          <div class="problem-infographic">
+            <div style="font-size: 9px; font-weight: 700; color: #9B2C2C; margin-bottom: 4px; text-transform: uppercase;">
+              Текущий путь пациента (Без Daryger):
+            </div>
+            <div class="prob-flow">
+              <div class="prob-node">Пациент в районе</div>
+              <div class="prob-arrow">➔</div>
+              <div class="prob-node">50–100 км в пути</div>
+              <div class="prob-arrow">➔</div>
+              <div class="prob-node prob-node-bad">Целый день потерян</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">⚠️ Дефицит специалистов</div>
+            <div class="card-desc">Нехватка узких профилей в районах вынуждает людей откладывать визиты к врачу.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🚌 Транспортные затраты</div>
+            <div class="card-desc">Расходы на дорогу и потеря рабочих часов снижают качество жизни граждан.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🏥 Перегрузка больниц</div>
+            <div class="card-desc">Очереди в областных клиниках из-за непредусмотренных первичных визитов.</div>
+          </div>
+        </div>
+
+        <div style="font-size: 8.5px; color: var(--text-muted); text-align: center; border-top: 1px solid var(--border-color); padding-top: 4px;">
+          Контекст: Карагандинская область РК
+        </div>
+      </div>
+
+      <!-- Panel 2: Решение DARYGER -->
+      <div class="panel">
+        <div>
+          <div class="panel-header">
+            <span class="panel-tag">Панель 2 • Инновация</span>
+            <h2 class="panel-title">Решение <span>DARYGER</span></h2>
+          </div>
+
+          <p style="font-size: 10px; color: var(--text-dark); margin-bottom: 8px;">
+            Интеллектуальный мост, соединяющий жителей сельских регионов с лучшими врачами области:
+          </p>
+
+          <div class="feature-grid">
+            <div class="feature-item">
+              <div class="feature-item-title">🤖 ИИ-Триаж</div>
+              Gemini 2.5 определяет риски и категории срочности.
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-item-title">🇰🇿 Двуязычие</div>
+              Полный интерфейс на казахском и русском языках.
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-item-title">⚡ Автономность</div>
+              Локальный алгоритм работает при сбое сети.
+            </div>
+
+            <div class="feature-item">
+              <div class="feature-item-title">📡 Слабый 3G</div>
+              Оптимизирован для работы на сельских сетях.
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 10px;">
+            <div class="card-title">🚨 Умная маршрутизация</div>
+            <div class="card-desc">Срочные случаи автоматически поднимаются вверх в кабинете врача.</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📝 ИИ-Саммари анамнеза</div>
+            <div class="card-desc">Врач получает готовый краткий отчёт по симптомам, экономя 10 минут.</div>
+          </div>
+        </div>
+
+        <div style="font-size: 8.5px; color: var(--text-muted); text-align: center; border-top: 1px solid var(--border-color); padding-top: 4px;">
+          Daryger • Умный цифровой госпиталь
+        </div>
+      </div>
+
+      <!-- Panel 3 & 4 Combined View / Panel 3: Ценность + Архитектура -->
+      <div class="panel">
+        <div>
+          <div class="panel-header">
+            <span class="panel-tag">Панель 3 & 4 • Ценность и Архитектура</span>
+            <h2 class="panel-title">Эффект и <span>Надежность</span></h2>
+          </div>
+
+          <!-- Table of Benefits -->
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>Участник</th>
+                <th>Прямая выгода</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Пациенты</strong></td>
+                <td>Консультация за 10 мин без поездок в областной центр.</td>
+              </tr>
+              <tr>
+                <td><strong>Врачи</strong></td>
+                <td>Готовый ИИ-анамнез и экономия времени на прием.</td>
+              </tr>
+              <tr>
+                <td><strong>Поликлиники</strong></td>
+                <td>Снижение живых очередей и нагрузки на регистратуру.</td>
+              </tr>
+              <tr>
+                <td><strong>Акимат</strong></td>
+                <td>Экономия бюджета РК и аналитика заболеваемости.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top: 10px; font-weight: 700; font-size: 11px; color: var(--primary-dark);">
+            ⚙️ Архитектурная надежность 3G:
+          </div>
+
+          <div class="flow-vertical" style="margin: 6px 0;">
+            <div class="flow-step" style="padding: 4px 8px;">
+              <div class="flow-step-text" style="font-size: 9.5px;">
+                Пациент ➔ <strong>ИИ / Local Engine</strong> ➔ Срочная очередь ➔ Врач
+              </div>
+            </div>
+          </div>
+
+          <div class="tech-pill-container">
+            <span class="tech-pill">Next.js 16</span>
+            <span class="tech-pill">PostgreSQL</span>
+            <span class="tech-pill">FastAPI</span>
+            <span class="tech-pill">Redis</span>
+            <span class="tech-pill">BullMQ</span>
+            <span class="tech-pill">Daily WebRTC</span>
+            <span class="tech-pill">MinIO S3</span>
+            <span class="tech-pill">jsPDF</span>
+          </div>
+
+          <div class="card" style="margin-top: 8px; background: #F8FAFC;">
+            <div class="card-title" style="font-size: 10px;">🔒 Безопасность данных</div>
+            <div class="card-desc" style="font-size: 9px;">Шифрование данных и соответствие стандартам защиты персональных данных РК.</div>
+          </div>
+        </div>
+
+        <div style="font-size: 8.5px; color: var(--text-muted); text-align: center; border-top: 1px solid var(--border-color); padding-top: 4px;">
+          Terricon Valley Incubator Project • 2026
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
