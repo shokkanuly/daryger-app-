@@ -186,6 +186,45 @@ curl -X POST localhost:3000/api/finance/run     # import + reconcile + forecast
 
 ---
 
+## Who benefits
+
+### 👩‍🌾 Rural citizens and patients
+* **No long journeys.** Patients in Shakhtinsk, Saran, Abay and other remote districts
+  consult regional specialists without travelling 50–100 km to Karaganda.
+* **Bilingual AI triage, 24/7.** Immediate urgency assessment in Kazakh or Russian.
+* **Works on weak 3G.** Text-first consultations; video only when the doctor starts it.
+* **Digital prescriptions on the phone**, without queueing for a paper copy.
+
+### 👨‍⚕️ Doctors and regional hospitals
+* **Prioritised queues.** Emergency and high-urgency patients surface first.
+* **Pre-summarised symptoms** cut consultation preparation time.
+* **Records keep themselves.** Prescriptions, clinical notes, and an audit trail of every
+  state change.
+* **A specialist opinion without a referral** — the teleconsilium keeps the patient with
+  their own doctor.
+
+### 🏛️ Akimat and regional health administration
+* **Narrows the urban–rural access gap** in the Karaganda region.
+* **Cross-system oversight.** Financial discrepancies, contract under-delivery and
+  unfinished personnel procedures surface automatically instead of at quarter end.
+* **Ready for integration.** Adapter-based architecture: connecting Damumed or ЕИСЗ is a
+  configuration change, not a rewrite.
+
+### 📣 Pitch and application materials
+
+Akimat pitch in Kazakh and Russian, executive summary, and a printable trifold:
+
+* [AKIMAT_PITCH_AND_PRESENTATION.md](AKIMAT_PITCH_AND_PRESENTATION.md)
+* [BROCHURE_DESIGN_AND_TEXT.md](BROCHURE_DESIGN_AND_TEXT.md)
+* [DARYGER_TRIFOLD_BROCHURE.html](DARYGER_TRIFOLD_BROCHURE.html)
+
+Grant application package (Тәуелсіздік ұрпақтары, на русском):
+
+* [docs/grant/ЗАЯВКА-ТУ.md](docs/grant/ЗАЯВКА-ТУ.md) — приложения 1, 2, 3
+* [docs/grant/ЧЕКЛИСТ.md](docs/grant/ЧЕКЛИСТ.md) — соответствие Правилам
+
+---
+
 ## Documentation
 
 | Document | Contents |

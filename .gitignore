@@ -48,3 +48,5 @@ next-env.d.ts
 __pycache__/
 *.pyc
 .pytest_cache/
+archived/26-28/
+archived/
