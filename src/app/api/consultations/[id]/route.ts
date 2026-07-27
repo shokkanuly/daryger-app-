@@ -14,6 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       patient: { select: { id: true, name: true, town: true, phone: true } },
       doctor: { select: { id: true, name: true } },
       messages: {
+        // Internal (doctor-to-doctor) messages are filtered out below for
+        // patients; fetched here so doctors keep seeing them in the thread.
         include: { sender: { select: { id: true, name: true, role: true } } },
         orderBy: { createdAt: "asc" },
       },
@@ -28,6 +30,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     (session.role === "DOCTOR" && !consultation.doctorId);
 
   if (!isParticipant) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // A patient must never see clinical deliberation between doctors.
+  if (session.role === "PATIENT") {
+    consultation.messages = consultation.messages.filter((m) => !m.isInternal);
+  }
 
   return NextResponse.json(consultation);
 }

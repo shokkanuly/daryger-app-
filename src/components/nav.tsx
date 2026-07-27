@@ -27,6 +27,7 @@ export async function Nav({ role }: NavProps) {
           { href: "/doctor", label: t("nav.dashboard") },
           { href: "/doctor/consultations", label: t("nav.consultations") },
           { href: "/doctor/patients", label: t("nav.patients") },
+          { href: "/doctor/teleconsilium", label: "Телеконсилиум" },
           { href: "/doctor/schedule", label: t("nav.schedule") },
         ]
       : role === "CLINIC_ADMIN"
@@ -35,11 +36,14 @@ export async function Nav({ role }: NavProps) {
         ]
       : role === "FINANCE_ANALYST"
       ? [
-          { href: "/finance", label: "Finance Ops" },
+          { href: "/admin/finance", label: "Финансы" },
         ]
       : role === "SYSTEM_ADMIN" || role === "PARTNER_OPERATOR"
       ? [
           { href: "/price/admin", label: "Admin Dashboard" },
+          { href: "/admin/sources", label: "Единая ИС" },
+          { href: "/admin/finance", label: "Финансы" },
+          { href: "/admin/appeals", label: "Обращения" },
           { href: "/admin/catalog", label: "Price Catalog" },
           { href: "/admin/unmatched", label: "Unmatched Queue" },
         ]
@@ -58,7 +62,7 @@ export async function Nav({ role }: NavProps) {
             <Stethoscope className="h-4 w-4 text-white" />
           </div>
           <span className="font-bold text-slate-900">Daryger</span>
-          <span className="hidden text-xs text-slate-400 sm:inline">· MedServicePrice.kz</span>
+          
         </Link>
 
         {/* Logged-in nav links */}
