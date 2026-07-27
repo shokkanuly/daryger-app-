@@ -126,7 +126,7 @@ export default async function HomePage() {
           <div className="text-center mb-10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm backdrop-blur">
               <HeartPulse className="h-4 w-4 text-emerald-300 animate-pulse" />
-              <span>Daryger & MedServicePrice — Единая платформа здравоохранения Карагандинской области</span>
+              <span>Daryger — Единая платформа здравоохранения Карагандинской области</span>
             </div>
             <h1 className="text-3xl font-extrabold leading-tight md:text-5xl lg:text-6xl tracking-tight">
               Медицинская помощь и поиск цен<br />
@@ -355,7 +355,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-4 flex flex-col items-center gap-2 text-sm text-slate-500">
           <div className="flex items-center gap-2">
             <Stethoscope className="h-4 w-4 text-teal-600" />
-            <span className="font-semibold text-slate-700">Daryger & MedServicePrice</span>
+            <span className="font-semibold text-slate-700">Daryger</span>
             <span>· Дәрігер</span>
           </div>
           <p className="text-xs text-center">

@@ -36,18 +36,21 @@ export async function POST(req: NextRequest) {
         detectedClinic = await db.clinic.findFirst({ where: { name: { contains: "Doq", mode: "insensitive" } } });
       }
 
+      // Deliberately NOT db.clinic.findFirst(): that returned whatever row
+      // happened to be first and silently filed an entire archive against an
+      // unrelated clinic. For an archive the real attribution happens per
+      // inner file during parsing (see src/lib/catalog/clinic-resolver.ts);
+      // this record only needs a stable owner for the uploaded blob.
       if (!detectedClinic) {
-        detectedClinic = await db.clinic.findFirst();
-      }
-
-      if (!detectedClinic) {
-        detectedClinic = await db.clinic.create({
-          data: {
-            name: "Default Partner Clinic",
-            city: "Karaganda",
-            sourceType: "PARTNER",
-          },
-        });
+        detectedClinic =
+          (await db.clinic.findFirst({ where: { name: "Unassigned Partner Upload" } })) ??
+          (await db.clinic.create({
+            data: {
+              name: "Unassigned Partner Upload",
+              city: "Karaganda",
+              sourceType: "PARTNER",
+            },
+          }));
       }
 
       finalClinicId = detectedClinic.id;
