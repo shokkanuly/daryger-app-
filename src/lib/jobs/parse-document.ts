@@ -1,6 +1,8 @@
 import { db } from "../db";
 import { getObject } from "../storage";
 import { matchService } from "../catalog/matcher";
+import { resolveClinicForFile } from "../catalog/clinic-resolver";
+import { fetchWithTimeout, TIMEOUTS } from "../http";
 
 const RATES: Record<string, number> = {
   USD: 450,
@@ -42,17 +44,31 @@ export async function parseDocumentJob(docId: string) {
     const blob = new Blob([Buffer.from(buffer)]);
     formData.append("file", blob, doc.fileName);
 
-    const parseRes = await fetch(`${ingestUrl}/parse`, {
-      method: "POST",
-      body: formData,
-    });
+    // Long deadline: a scanned PDF going through OCR is allowed up to 3 minutes.
+    // Without any deadline a wedged ingest container held this worker forever.
+    const parseRes = await fetchWithTimeout(
+      `${ingestUrl}/parse`,
+      { method: "POST", body: formData },
+      TIMEOUTS.DOCUMENT_PARSE
+    );
 
     if (!parseRes.ok) {
       const errText = await parseRes.text();
       throw new Error(`Ingest service returned error ${parseRes.status}: ${errText}`);
     }
 
-    const { rows } = await parseRes.json();
+    const { rows, errors } = await parseRes.json();
+
+    // Per-file failures inside an archive used to be printed and dropped, so a
+    // clinic whose price list failed to parse was indistinguishable from one
+    // with no services. Surface them on the document instead.
+    if (Array.isArray(errors) && errors.length > 0) {
+      for (const e of errors) {
+        parseLog += `[Skipped file] ${e.file}: ${e.error}\n`;
+      }
+      statusResult = "NEEDS_REVIEW";
+    }
+
     if (!rows || rows.length === 0) {
       await db.priceDocument.update({
         where: { id: docId },
@@ -64,12 +80,37 @@ export async function parseDocumentJob(docId: string) {
       return;
     }
 
-    // 3. Process each parsed row
+    // 3. Process each parsed row.
+    //
+    // Rows carry the file they came from, and an archive holds one price list
+    // per clinic, so each row is attributed to the clinic its file names rather
+    // than to the document's own clinic. Resolutions are cached per file: the
+    // lookup is identical for every row of a given list.
+    const clinicIdByFile = new Map<string, string>();
+    // Captured so the closure below keeps the non-null narrowing from the
+    // early return above.
+    const fallbackClinicId = doc.clinicId;
+    const documentCity = doc.clinic.city;
+
+    async function clinicIdForRow(sourceFile: string | undefined): Promise<string> {
+      if (!sourceFile) return fallbackClinicId;
+      const cached = clinicIdByFile.get(sourceFile);
+      if (cached) return cached;
+      const resolved = await resolveClinicForFile(
+        sourceFile,
+        fallbackClinicId,
+        documentCity
+      );
+      clinicIdByFile.set(sourceFile, resolved);
+      return resolved;
+    }
+
     for (const row of rows) {
       const rawName = row.name;
       let priceOriginal = row.price_resident;
       let priceNonresOriginal = row.price_nonresident;
       const currencyOriginal = row.currency || "KZT";
+      const clinicId = await clinicIdForRow(row.source_file);
 
       // Validation 1: Service name non-empty
       if (!rawName || rawName.trim() === "") {
@@ -116,7 +157,7 @@ export async function parseDocumentJob(docId: string) {
       if (serviceId) {
         const prevRecord = await db.priceRecord.findFirst({
           where: {
-            clinicId: doc.clinicId,
+            clinicId: clinicId,
             serviceId,
             isActive: true,
           },
@@ -143,35 +184,29 @@ export async function parseDocumentJob(docId: string) {
       const endOfRecordDay = new Date(recordDate);
       endOfRecordDay.setHours(23,59,59,999);
 
-      if (serviceId) {
-        // Archive duplicate
-        await db.priceRecord.updateMany({
-          where: {
-            clinicId: doc.clinicId,
-            serviceId,
-            parsedAt: { gte: startOfRecordDay, lte: endOfRecordDay },
-            isActive: true,
-          },
-          data: { isActive: false },
-        });
-      } else {
-        // Archive raw name duplicate
-        await db.priceRecord.updateMany({
-          where: {
-            clinicId: doc.clinicId,
-            serviceNameRaw: rawName,
-            serviceId: null,
-            parsedAt: { gte: startOfRecordDay, lte: endOfRecordDay },
-            isActive: true,
-          },
-          data: { isActive: false },
-        });
-      }
+      // Archive the previous version of THIS line item.
+      //
+      // Keyed on the raw name, never on serviceId. A clinic legitimately sells
+      // several distinct services that normalize to one catalogue entry
+      // ("Глюкоза натощак" and "Глюкоза с нагрузкой" both match "Глюкоза"), so
+      // archiving by serviceId made each one destroy the previous — 59% of a
+      // real import disappeared this way, silently, within a single run.
+      // Identical raw names from the same clinic on the same day are the true
+      // duplicate case, which is what a re-upload produces.
+      await db.priceRecord.updateMany({
+        where: {
+          clinicId: clinicId,
+          serviceNameRaw: rawName,
+          parsedAt: { gte: startOfRecordDay, lte: endOfRecordDay },
+          isActive: true,
+        },
+        data: { isActive: false },
+      });
 
       // Insert new price record
       const priceRecord = await db.priceRecord.create({
         data: {
-          clinicId: doc.clinicId,
+          clinicId: clinicId,
           serviceId,
           serviceNameRaw: rawName,
           priceKzt: priceKzt,
