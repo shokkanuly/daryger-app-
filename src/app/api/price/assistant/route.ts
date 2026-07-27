@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 const RATES: Record<string, number> = { USD: 450, RUB: 5, EUR: 500, KZT: 1 };
 
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 1. Call Gemini to analyse symptoms ─────────────────────────────────
-    const prompt = `Ты — медицинский ИИ-ассистент MedServicePrice.kz.
+    const prompt = `Ты — медицинский ИИ-ассистент Daryger.
 Пациент описывает жалобу: "${message}"
 
 1. Кратко проанализируй жалобу на русском языке (2-3 предложения).
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
   "search_queries": ["...", "..."]
 }`;
 
-    const geminiRes = await fetch(
+    const geminiRes = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {
         method: "POST",
@@ -39,7 +40,8 @@ export async function POST(req: NextRequest) {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
         }),
-      }
+      },
+      TIMEOUTS.EXTERNAL_API
     );
 
     if (!geminiRes.ok) {

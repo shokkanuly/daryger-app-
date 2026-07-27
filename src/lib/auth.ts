@@ -3,9 +3,18 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || "daryger-dev-secret-key-change-in-production"
-);
+// No fallback value. A default secret that ships in the source tree is a
+// signing key every reader of this repo knows, which lets anyone mint a valid
+// session cookie for any role — including SYSTEM_ADMIN. Failing at import time
+// turns that into an obvious misconfiguration instead of a silent hole.
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET is not set. Generate one (openssl rand -hex 32) and add it to .env — " +
+      "sessions cannot be signed safely without it."
+  );
+}
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export interface SessionUser {
   id: string;

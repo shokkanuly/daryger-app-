@@ -1,4 +1,5 @@
 import { ClinicalFactor } from "./protocols/hepatitis-b-2025";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 export async function generateExplanation(
   score: number,
@@ -20,7 +21,7 @@ Provide a concise, clear clinical explanation in Russian (the medical standard i
 Explain what these factors mean clinically. Keep it to 3-4 sentences maximum. Speak to the clinician as a professional colleague. Do not return any JSON wrappers or markdown code blocks; return the text directly.`;
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -31,7 +32,8 @@ Explain what these factors mean clinically. Keep it to 3-4 sentences maximum. Sp
             temperature: 0.3,
           },
         }),
-      }
+      },
+      TIMEOUTS.EXTERNAL_API
     );
 
     if (!response.ok) {

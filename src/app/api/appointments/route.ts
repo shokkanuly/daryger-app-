@@ -3,6 +3,9 @@ import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logAction } from "@/lib/audit";
 
+/** Thrown inside the booking transaction when another patient wins the slot. */
+class SlotTakenError extends Error {}
+
 export async function GET() {
   const session = await requireSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,26 +45,57 @@ export async function POST(req: NextRequest) {
     where: { doctor: { userId: doctorId }, date, time, isBooked: false },
   });
 
-  if (slot) {
-    await db.timeSlot.update({ where: { id: slot.id }, data: { isBooked: true } });
+  if (!slot) {
+    // Previously the appointment was created regardless, producing bookings
+    // backed by no slot at all — double-booked doctors with no way to detect it.
+    return NextResponse.json(
+      { error: "That time slot is not available" },
+      { status: 409 }
+    );
   }
 
   const doctorProfile = await db.doctorProfile.findUnique({ where: { userId: doctorId } });
 
-  const appointment = await db.appointment.create({
-    data: {
-      patientId: session.id,
-      doctorId,
-      date,
-      time,
-      type: type || "IN_PERSON",
-      clinic: clinic || doctorProfile?.clinic,
-      notes,
-    },
-    include: {
-      doctor: { select: { name: true } },
-    },
-  });
+  // Claim the slot and create the appointment as one unit.
+  //
+  // The claim is conditional on the slot still being free: two patients booking
+  // the same slot concurrently both pass the findFirst above, and only the one
+  // whose updateMany reports a row wins. Wrapping both statements in a
+  // transaction means a failed insert rolls the claim back instead of leaving
+  // the slot marked booked with no appointment behind it.
+  let appointment;
+  try {
+    appointment = await db.$transaction(async (tx) => {
+      const { count } = await tx.timeSlot.updateMany({
+        where: { id: slot.id, isBooked: false },
+        data: { isBooked: true },
+      });
+      if (count === 0) throw new SlotTakenError();
+
+      return tx.appointment.create({
+        data: {
+          patientId: session.id,
+          doctorId,
+          date,
+          time,
+          type: type || "IN_PERSON",
+          clinic: clinic || doctorProfile?.clinic,
+          notes,
+        },
+        include: {
+          doctor: { select: { name: true } },
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof SlotTakenError) {
+      return NextResponse.json(
+        { error: "That time slot was just taken" },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 
   await logAction(
     session.id,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 interface TriageAnalysis {
   urgency: "LOW" | "MEDIUM" | "HIGH" | "EMERGENCY";
@@ -49,7 +50,7 @@ Provide your assessment as JSON matching exactly this schema. Do not add any exp
 
   try {
     // gemini-2.5-flash — confirmed stable as of July 2026
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -86,7 +87,8 @@ Provide your assessment as JSON matching exactly this schema. Do not add any exp
             temperature: 0.2,
           },
         }),
-      }
+      },
+      TIMEOUTS.EXTERNAL_API
     );
 
     if (!response.ok) {
