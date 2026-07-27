@@ -25,6 +25,10 @@ model AuditLog {
   entityId  String
   metadata  Json?
   createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity, entityId])
+  @@index([createdAt])
 }
 
 
@@ -73,6 +77,9 @@ model User {
   doctorAppointments   Appointment[]  @relation("DoctorAppointments")
   messages             Message[]
   screeningInvites     ScreeningInvite[]
+  externalAccounts     ExternalAccount[]
+  teleconsiliaRequested Teleconsilium[]  @relation("TeleconsiliumRequested")
+  teleconsiliaAsSpecialist Teleconsilium[] @relation("TeleconsiliumSpecialist")
 }
 
 model DoctorProfile {
@@ -111,6 +118,13 @@ model Consultation {
   updatedAt      DateTime             @updatedAt
 
   messages Message[]
+  teleconsilia Teleconsilium[]
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([referredToId])
+  // Doctor dashboard counts and the specialist queue both filter on this pair.
+  @@index([status, specialistRequired])
 }
 
 model Message {
@@ -120,7 +134,16 @@ model Message {
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   content        String
+  /// Doctor-to-doctor message. Never shown to the patient — this is how a
+  /// teleconsilium discussion attaches to the case it is about without leaking
+  /// clinical deliberation into the patient's chat.
+  isInternal     Boolean      @default(false)
   createdAt      DateTime     @default(now())
+
+  @@index([senderId])
+  @@index([consultationId, isInternal])
+  // Chat reads always page one consultation's messages in time order.
+  @@index([consultationId, createdAt])
 }
 
 model Appointment {
@@ -136,6 +159,11 @@ model Appointment {
   clinic    String?
   notes     String?
   createdAt DateTime          @default(now())
+
+  @@index([patientId])
+  @@index([doctorId])
+  // Both list views sort a single user's appointments chronologically.
+  @@index([doctorId, date, time])
 }
 
 model TimeSlot {
@@ -145,6 +173,10 @@ model TimeSlot {
   date      String
   time      String
   isBooked  Boolean       @default(false)
+
+  @@index([doctorId])
+  // Booking looks a slot up by exactly this tuple before claiming it.
+  @@index([doctorId, date, time, isBooked])
 }
 
 model Service {
@@ -155,6 +187,12 @@ model Service {
   icdCode      String?
   isActive     Boolean       @default(true)
   priceRecords PriceRecord[]
+
+  // The matcher loads the full active catalogue on every cache refresh, and
+  // search filters by name.
+  @@index([isActive])
+  @@index([name])
+  @@index([category])
 }
 
 model Clinic {
@@ -185,6 +223,9 @@ model RawCapture {
   rawContent String   // key in object storage
   fetchedAt  DateTime @default(now())
   status     String   // PENDING | PARSED | ERROR
+
+  @@index([clinicId])
+  @@index([status])
 }
 
 model MatchQueueItem {
@@ -195,6 +236,12 @@ model MatchQueueItem {
   status             String   @default("PENDING") // PENDING | APPROVED | REJECTED
   sourceRecordId     String
   createdAt          DateTime @default(now())
+
+  @@index([status])
+  @@index([sourceRecordId])
+  // Both ingest paths dedup the queue with a findFirst on this pair before
+  // enqueuing, once per unmatched row — the hottest lookup in a bulk import.
+  @@index([rawName, status])
 }
 
 model PriceRecord {
@@ -218,6 +265,17 @@ model PriceRecord {
   verificationNote    String?
   sourceDocId         String?
   sourceDoc           PriceDocument? @relation(fields: [sourceDocId], references: [id])
+
+  @@index([serviceId])
+  @@index([clinicId])
+  @@index([sourceDocId])
+  // Price search filters active rows and sorts by price.
+  @@index([isActive, priceKzt])
+  // Ingest dedup: both the crawl and document paths look for an existing active
+  // row for this clinic/service on the same day before inserting.
+  @@index([clinicId, serviceId, isActive, parsedAt])
+  // Same dedup for rows that never matched the catalogue.
+  @@index([clinicId, serviceNameRaw, isActive, parsedAt])
 }
 
 model PriceDocument {
@@ -232,6 +290,9 @@ model PriceDocument {
   parseLog      String?
   rawContentKey String        // S3 key
   priceRecords  PriceRecord[]
+
+  @@index([clinicId])
+  @@index([parseStatus])
 }
 
 model Appeal {
@@ -244,6 +305,14 @@ model Appeal {
   slaDueAt    DateTime
   assignedTo  String?
   createdAt   DateTime @default(now())
+
+  @@index([assignedTo])
+  // The inbox filters by status and channel and sorts by SLA deadline; the
+  // overdue sweep scans status + slaDueAt.
+  @@index([status, slaDueAt])
+  @@index([channel])
+  // Poll dedup looks up the source system's own id.
+  @@index([channel, externalRef])
 }
 
 model ScreeningProgram {
@@ -263,6 +332,241 @@ model ScreeningInvite {
   status      String   @default("QUEUED") // QUEUED | SENT | DELIVERED | RESPONDED | COMPLETED
   sentAt      DateTime?
   respondedAt DateTime?
+
+  @@index([patientId])
+  @@index([programId])
+  // The coverage dashboard aggregates one program's invites by status.
+  @@index([programId, status])
+}
+
+// ─── Track 2 · Финансы и управление ──────────────────────────────────────────
+// MedHub tasks 5-10. See docs/plans/finance-and-management.md.
+//
+// None of ЕСОМП, Казына, 1С, the procurement portal or ФСМС contracts are
+// reachable from here. Data arrives as operator-uploaded CSV/XLSX exports,
+// which is also how these systems are realistically accessible to a clinic.
+
+/// Where a financial figure came from.
+enum FinanceSource {
+  ESOMP
+  KAZYNA
+  ONEC_FIN
+  GOSZAKUP
+  FSMS
+}
+
+/// A single financial fact as one system reported it. Same provenance-preserving
+/// approach as ConsolidatedRecord: systems are compared, never merged.
+model FinanceRecord {
+  id         String        @id @default(uuid())
+  source     FinanceSource
+  externalId String
+  category   String
+  amount     Decimal
+  recordedAt DateTime
+  period     String        // "2026-Q3" — the planning bucket this falls in
+  raw        Json
+  importedAt DateTime      @default(now())
+
+  @@unique([source, externalId])
+  @@index([source, period])
+  @@index([category, recordedAt])
+  @@index([period])
+}
+
+/// A figure that two systems disagree about. Task 8 (автосверка).
+model ReconciliationFlag {
+  id          String    @id @default(uuid())
+  sourceA     FinanceSource
+  sourceB     FinanceSource
+  externalIdA String
+  externalIdB String?
+  category    String
+  amountA     Decimal
+  amountB     Decimal?
+  discrepancy Decimal
+  /// MISSING_IN_B — A has a record B never reported. AMOUNT_MISMATCH — both
+  /// have it, the numbers differ beyond tolerance.
+  kind        String
+  status      String    @default("OPEN") // OPEN | RESOLVED | IGNORED
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([category])
+}
+
+/// Projected spend per category per period, with actuals filled in as they
+/// arrive. Tasks 6 and 9.
+model BudgetForecast {
+  id             String   @id @default(uuid())
+  period         String
+  category       String
+  forecastAmount Decimal
+  actualAmount   Decimal?
+  /// How the projection was produced, so a reader knows not to over-trust it.
+  method         String   @default("moving_average_3")
+  createdAt      DateTime @default(now())
+
+  @@unique([period, category])
+  @@index([period])
+}
+
+/// Allocated state funding and how it is distributed. Task 9.
+model BudgetAllocation {
+  id            String   @id @default(uuid())
+  period        String
+  programme     String   // ФСМС | ГОБМП
+  category      String
+  allocated     Decimal
+  committed     Decimal  @default(0)
+  spent         Decimal  @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([period, programme, category])
+  @@index([period])
+}
+
+/// An ОСМС/ГОБМП contract and its delivery against plan. Task 7.
+model Contract {
+  id             String   @id @default(uuid())
+  contractNumber String   @unique
+  programme      String   // ОСМС | ГОБМП
+  period         String
+  serviceCategory String
+  plannedVolume  Decimal
+  deliveredVolume Decimal @default(0)
+  plannedAmount  Decimal
+  deliveredAmount Decimal @default(0)
+  startsAt       DateTime
+  endsAt         DateTime
+  updatedAt      DateTime @updatedAt
+
+  @@index([period, programme])
+  @@index([endsAt])
+}
+
+/// A personnel process left unfinished. Task 10.
+model HrAnomaly {
+  id          String    @id @default(uuid())
+  employeeRef String
+  employeeName String?
+  /// unclosed_termination | expired_contract | overdue_leave_return | missing_timesheet
+  type        String
+  severity    String    @default("MEDIUM") // LOW | MEDIUM | HIGH
+  detail      String
+  detectedAt  DateTime  @default(now())
+  status      String    @default("OPEN") // OPEN | RESOLVED
+  resolvedBy  String?
+  resolvedAt  DateTime?
+
+  @@unique([employeeRef, type, status])
+  @@index([status, severity])
+}
+
+/// The clinic systems Daryger consolidates. See
+/// docs/plans/unified-information-system.md — no credentials exist for any of
+/// these; every adapter is mocked with its real endpoint documented in code.
+enum SourceSystem {
+  DAMUMED
+  EISZ
+  AIGYN
+  QALQAN
+  ONEC
+}
+
+/// One staff member's account in an external system. Replaces the per-system
+/// logins each employee otherwise maintains by hand.
+model ExternalAccount {
+  id           String       @id @default(uuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  system       SourceSystem
+  externalId   String
+  displayName  String?
+  lastSyncedAt DateTime?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+
+  @@unique([system, externalId])
+  @@index([userId])
+  @@index([system])
+}
+
+/// A record as one system reported it. Deliberately never merged across
+/// systems: keeping each source's version separate is what makes it possible to
+/// answer "which system said this?" and to detect disagreement instead of
+/// silently overwriting one system's data with another's.
+model ConsolidatedRecord {
+  id         String       @id @default(uuid())
+  recordType String       // patient | staff | encounter | resource
+  subjectRef String       // stable identity across systems (IIN, tab number)
+  system     SourceSystem
+  externalId String
+  payload    Json
+  fetchedAt  DateTime     @default(now())
+  isActive   Boolean      @default(true)
+
+  @@unique([system, externalId])
+  @@index([subjectRef])
+  @@index([recordType, subjectRef])
+  @@index([system, isActive])
+}
+
+/// A field where two systems disagree about the same subject. Raised for a
+/// human to resolve rather than auto-resolved — picking a winner silently is
+/// how fragmented systems produce confident wrong answers.
+model RecordConflict {
+  id           String   @id @default(uuid())
+  subjectRef   String
+  recordType   String
+  field        String
+  values       Json     // [{ system, value }]
+  status       String   @default("OPEN") // OPEN | RESOLVED
+  resolvedTo   String?
+  resolvedBy   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@unique([subjectRef, field, status])
+  @@index([status, createdAt])
+  @@index([subjectRef])
+}
+
+/// A doctor-to-doctor consultation about a patient case — Track 3
+/// «Телеконсилиум Врач-Врач».
+///
+/// Distinct from the specialist referral queue: a referral hands the patient
+/// over, a teleconsilium keeps them with their GP and brings a specialist's
+/// opinion to the GP instead. That is what takes load off the hepatology centre
+/// rather than moving it around.
+model Teleconsilium {
+  id             String       @id @default(uuid())
+  consultationId String
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  /// The GP or attending doctor asking.
+  requestedById  String
+  requestedBy    User         @relation("TeleconsiliumRequested", fields: [requestedById], references: [id])
+  /// The specialist who picked it up. Null while unclaimed.
+  specialistId   String?
+  specialist     User?        @relation("TeleconsiliumSpecialist", fields: [specialistId], references: [id])
+  /// Which specialty is being asked for, e.g. "hepatology".
+  specialty      String
+  question       String
+  /// The specialist's answer, once given.
+  opinion        String?
+  videoRoomUrl   String?
+  status         String       @default("REQUESTED") // REQUESTED | ACTIVE | COMPLETED
+  createdAt      DateTime     @default(now())
+  claimedAt      DateTime?
+  completedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([specialty, status])
+  @@index([consultationId])
+  @@index([requestedById])
+  @@index([specialistId])
 }
 
 model RiskAssessment {
@@ -273,6 +577,10 @@ model RiskAssessment {
   modelVersion String   // e.g. "hepb-protocol-2025-v1"
   flags        Json     // which protocol factors contributed, for the explanation view
   computedAt   DateTime @default(now())
+
+  // Assessment history is read per patient, newest first.
+  @@index([patientId, computedAt])
+  @@index([condition])
 }
 
 
