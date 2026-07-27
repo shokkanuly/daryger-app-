@@ -6,6 +6,7 @@ import { db } from "./db";
 import { IkomekAdapter } from "./adapters/appeals/ikomek";
 import { CrmAdapter } from "./adapters/appeals/crm";
 import { EotinishAdapter } from "./adapters/appeals/eotinish";
+import { syncAllSources } from "./sources/sync";
 import { getQueue } from "./queue";
 
 const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
@@ -59,6 +60,22 @@ export function startWorker() {
     opsWorker = new Worker(
       "ops-queue",
       async (job) => {
+        if (job.name === "sync-source-systems") {
+          // Track 1 · task 01 — pull the five clinic systems into the
+          // consolidated layer and reconcile. syncAllSources isolates each
+          // system's failures internally, so one unreachable source does not
+          // abort the run.
+          console.log("[Worker] Running scheduled source-system consolidation...");
+          const result = await syncAllSources();
+          const failed = result.systems.filter((s) => s.error);
+          console.log(
+            `[Worker] Consolidation done: ${result.systems.length - failed.length}/${result.systems.length} systems, ${result.conflicts} conflicts`
+          );
+          for (const f of failed) {
+            console.error(`[Worker] Source ${f.system} failed: ${f.error}`);
+          }
+        }
+
         if (job.name === "poll-appeals-and-sla") {
           console.log("[Worker] Running scheduled appeals poll and SLA check...");
           // 1. Run SLA check
@@ -114,6 +131,12 @@ export function startWorker() {
     opsQueue.add("poll-appeals-and-sla", {}, {
       repeat: { pattern: "*/5 * * * *" }
     }).catch(err => console.error("[Worker] Failed to add repeatable job:", err));
+
+    // Source consolidation runs less often than the appeals poll — these are
+    // whole-registry pulls, not an inbox.
+    opsQueue.add("sync-source-systems", {}, {
+      repeat: { pattern: "*/15 * * * *" }
+    }).catch(err => console.error("[Worker] Failed to add source sync job:", err));
   }
 }
 
