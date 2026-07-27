@@ -8,12 +8,24 @@ export function cleanRawName(rawName: string): string {
 
   // 1. Remove leading list numbers or SKU codes (e.g. "1.2.3. ", "A12.03.001 - ")
   cleaned = cleaned.replace(/^[a-zA-Z0-9.-]*\d+[a-zA-Z0-9.-]*\s+/, "");
-  // Remove standalone billing/procedure codes like "ВОЗ", "В02", "В03", "B06"
-  cleaned = cleaned.replace(/\b(воз|во|в\d+|во\d+|а\d+|б\d+)\b/g, "");
+  // Remove standalone billing/procedure codes like "ВОЗ", "В02", "В03", "B06".
+  //
+  // Deliberately not \b: JavaScript defines \b over [A-Za-z0-9_], so Cyrillic
+  // letters are never word characters and \bвоз\b matches nothing at all. This
+  // strip was silently a no-op, leaving codes in the token set where they
+  // diluted every overlap score. Unicode-aware lookarounds fix that while still
+  // refusing to bite into words that merely start the same way (вода, возраст).
+  // A bare "во" is deliberately absent from this alternation. It matched the
+  // preposition ("во влагалище", "во II-III триместре") rather than any code,
+  // and being ordered before во\d+ it also made that branch unreachable. The
+  // preposition belongs in STOP_WORDS, which is where it now lives.
+  const BILLING_CODE = /(?<![\p{L}\d])(воз|в\d+|во\d+|а\d+|б\d+)(?![\p{L}\d])/gu;
+  cleaned = cleaned.replace(BILLING_CODE, "");
 
-  // 2. Normalize common OCR errors
-  cleaned = cleaned.replace(/\b(ajit|ajlt|аjiт)\b/g, "алт");
-  cleaned = cleaned.replace(/\b(acm|acт)\b/g, "аст");
+  // 2. Normalize common OCR errors. Same boundary problem for the mixed-script
+  // forms — "аjiт" leads with a Cyrillic "а", so \b would not fire there either.
+  cleaned = cleaned.replace(/(?<![\p{L}\d])(ajit|ajlt|аjiт)(?![\p{L}\d])/gu, "алт");
+  cleaned = cleaned.replace(/(?<![\p{L}\d])(acm|acт)(?![\p{L}\d])/gu, "аст");
 
   // 3. Normalize hyphen-joined words (e.g "аллерголог-иммунолог" -> space separated)
   cleaned = cleaned.replace(/-/g, " ");
@@ -25,7 +37,7 @@ export function cleanRawName(rawName: string): string {
 
 // Medical stop words that shouldn't impact main classification overlap
 const STOP_WORDS = new Set([
-  "в", "на", "и", "для", "у", "с", "из", "по", "о", "об", "при", "за", "не",
+  "в", "во", "на", "и", "для", "у", "с", "из", "по", "о", "об", "при", "за", "не",
   "или", "но", "да", "же",
 ]);
 
@@ -36,7 +48,7 @@ const WEAK_WORDS = new Set([
   "первичная", "повторная", "первичный", "повторный",
 ]);
 
-function getWords(text: string, includeWeak = false): string[] {
+export function getWords(text: string, includeWeak = false): string[] {
   return text
     .split(/[^a-zA-Z0-9а-яА-ЯёЁ]+/)
     .map(w => w.toLowerCase().trim())
@@ -53,7 +65,7 @@ function getWeakWords(text: string): string[] {
 /**
  * Calculates string similarity using normalized Levenshtein distance
  */
-function getSimilarity(s1: string, s2: string): number {
+export function getSimilarity(s1: string, s2: string): number {
   const str1 = s1.toLowerCase().trim();
   const str2 = s2.toLowerCase().trim();
   if (str1 === str2) return 1.0;
@@ -88,7 +100,7 @@ function getSimilarity(s1: string, s2: string): number {
 }
 
 // Word stem - first 5 chars (handles Cyrillic morphology: кардиолог / кардиологу / кардиологом)
-function stem(w: string): string {
+export function stem(w: string): string {
   return w.length > 5 ? w.slice(0, 5) : w;
 }
 
@@ -96,7 +108,7 @@ function stem(w: string): string {
  * Bidirectional token overlap: max(intersect/rawWords, intersect/synWords)
  * This allows short raw names like "кардиолог" to match "Прием кардиолога"
  */
-function bidirectionalOverlap(rawWords: string[], synWords: string[]): number {
+export function bidirectionalOverlap(rawWords: string[], synWords: string[]): number {
   if (rawWords.length === 0 || synWords.length === 0) return 0;
 
   // Use stems for matching to handle Russian morphology
@@ -115,7 +127,23 @@ function bidirectionalOverlap(rawWords: string[], synWords: string[]): number {
 /**
  * standard matchService algorithm: Exact -> Synonym -> Bidirectional Token Overlap -> Fuzzy
  */
-let cachedServices: any[] | null = null;
+interface CachedSynonym {
+  original: string;
+  cleaned: string;
+  words: string[];
+  weakWords: string[];
+}
+
+interface CachedService {
+  id: string;
+  name: string;
+  cleanedName: string;
+  nameWords: string[];
+  nameWeakWords: string[];
+  synonyms: CachedSynonym[];
+}
+
+let cachedServices: CachedService[] | null = null;
 let lastCacheTime = 0;
 
 export async function matchService(rawName: string): Promise<{ serviceId: string | null; confidence: number }> {

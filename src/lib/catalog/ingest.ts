@@ -11,14 +11,14 @@ import { CrawlerAdapter } from "../crawler/adapter";
  * Isolated source run: logs adapter errors without failing the whole process.
  */
 export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promise<void> {
-  let adapter: CrawlerAdapter & { sourceUrl: string };
-  
+  let adapter: CrawlerAdapter;
+
   if (adapterName === "kdl") {
-    adapter = new KdlAdapter() as any;
+    adapter = new KdlAdapter();
   } else if (adapterName === "invitro") {
-    adapter = new InvitroAdapter() as any;
+    adapter = new InvitroAdapter();
   } else if (adapterName === "doq") {
-    adapter = new DoqAdapter() as any;
+    adapter = new DoqAdapter();
   } else {
     throw new Error(`Unknown adapter: ${adapterName}`);
   }
@@ -34,7 +34,9 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
     clinic = await db.clinic.create({
       data: {
         name: adapter.clinicName,
-        city: "Karaganda",
+        // Each source publishes prices for a specific city; defaulting them all
+        // to Karaganda mislabelled every crawled row.
+        city: adapter.city ?? "Karaganda",
         sourceUrl: adapter.sourceUrl,
         sourceType: "PUBLIC",
       },
@@ -42,8 +44,16 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
   }
 
   try {
-    const rawRows = await adapter.fetch();
-    console.log(`Scraped ${rawRows.length} services from ${adapter.clinicName}`);
+    const { rows: rawRows, provenance, note } = await adapter.fetch();
+
+    // Provenance decides whether these rows may be presented as real prices.
+    // FALLBACK rows are the adapter's built-in sample data and must stay
+    // distinguishable all the way into PriceRecord.
+    const isLive = provenance === "LIVE";
+    console.log(
+      `${isLive ? "Scraped" : "FELL BACK TO SAMPLE DATA for"} ${rawRows.length} services ` +
+        `from ${adapter.clinicName}${note ? ` — ${note}` : ""}`
+    );
 
     // Save capture data payload to MinIO
     const captureKey = `crawls/${adapterName}_${Date.now()}.json`;
@@ -51,9 +61,11 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
       clinicName: adapter.clinicName,
       fetchedAt: new Date().toISOString(),
       itemsCount: rawRows.length,
+      provenance,
+      note,
       rows: rawRows,
     });
-    
+
     await putObject(captureKey, payload, "application/json");
 
     // Log the RawCapture row in DB
@@ -79,28 +91,19 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
       // Calculate standardization mapping
       const { serviceId, confidence } = await matchService(rawName);
 
-      // Check if price record exists for this day (dedup)
-      let existingRecord = null;
-      if (serviceId) {
-        existingRecord = await db.priceRecord.findFirst({
-          where: {
-            clinicId: clinic.id,
-            serviceId,
-            parsedAt: { gte: startOfDay, lte: endOfDay },
-            isActive: true,
-          },
-        });
-      } else {
-        existingRecord = await db.priceRecord.findFirst({
-          where: {
-            clinicId: clinic.id,
-            serviceNameRaw: rawName,
-            serviceId: null,
-            parsedAt: { gte: startOfDay, lte: endOfDay },
-            isActive: true,
-          },
-        });
-      }
+      // Dedup on the raw name, never on serviceId — a source legitimately lists
+      // several distinct services that normalize to one catalogue entry, and
+      // keying on serviceId makes each overwrite the previous within a single
+      // run. Same reasoning as the document path in
+      // src/lib/jobs/parse-document.ts.
+      const existingRecord = await db.priceRecord.findFirst({
+        where: {
+          clinicId: clinic.id,
+          serviceNameRaw: rawName,
+          parsedAt: { gte: startOfDay, lte: endOfDay },
+          isActive: true,
+        },
+      });
 
       let priceRecord;
       if (existingRecord) {
@@ -122,7 +125,7 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
             durationDays: row.durationDays,
             parsedAt: new Date(),
             isActive: true,
-            sourceType: "CRAWL",
+            sourceType: isLive ? "CRAWL" : "CRAWL_FALLBACK",
           },
         });
       }
@@ -149,10 +152,12 @@ export async function runCrawlJob(adapterName: "kdl" | "invitro" | "doq"): Promi
     // Update raw capture status
     await db.rawCapture.update({
       where: { id: capture.id },
-      data: { status: "PARSED" },
+      data: { status: isLive ? "PARSED" : "PARSED_FALLBACK" },
     });
 
-    console.log(`Ingestion completed for ${adapter.clinicName}`);
+    console.log(
+      `Ingestion completed for ${adapter.clinicName} (provenance: ${provenance})`
+    );
   } catch (err: any) {
     console.error(`Failure executing crawl run for ${adapter.clinicName}:`, err);
     // Track error in database raw captures if possible

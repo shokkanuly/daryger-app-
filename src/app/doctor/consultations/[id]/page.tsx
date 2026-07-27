@@ -14,6 +14,7 @@ import {
 import { URGENCY_COLORS } from "@/lib/constants";
 import { useTranslation } from "@/lib/language-context";
 import { downloadPrescriptionPDF } from "@/lib/prescription-pdf";
+import { useConsultationStream } from "@/lib/use-consultation-stream";
 
 interface Message {
   id: string;
@@ -38,7 +39,7 @@ interface Consultation {
   diagnosis: string | null;
   prescription: string | null;
   videoRoomUrl: string | null;
-  patient: { name: string; town: string | null; phone: string | null };
+  patient: { id: string; name: string; town: string | null; phone: string | null };
   doctor: { id: string; name: string } | null;
   messages: Message[];
 }
@@ -117,11 +118,21 @@ export default function DoctorConsultChatPage() {
     }
   }, [consultation?.patient?.id]);
 
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
-  }, [id]);
+  // Live updates over SSE, replacing a 5s poll of the whole consultation.
+  // onSync runs the existing load(), which is what keeps diagnosis,
+  // prescription and followupApproved in step — a message-only stream would
+  // not have covered those.
+  useConsultationStream(id, {
+    onMessage: (msg) =>
+      setConsultation((prev) => {
+        if (!prev) return prev;
+        const incoming = msg as Message;
+        // A resync can replay a message already in state — de-dupe by id.
+        if (prev.messages.some((m) => m.id === incoming.id)) return prev;
+        return { ...prev, messages: [...prev.messages, incoming] };
+      }),
+    onSync: load,
+  });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

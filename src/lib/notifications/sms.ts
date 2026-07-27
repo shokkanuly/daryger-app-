@@ -1,4 +1,5 @@
 import { NotificationProvider } from "./types";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 export class SmsNotificationProvider implements NotificationProvider {
   async send(to: string, message: string, channel: "SMS" | "MESSENGER" | "APP"): Promise<void> {
@@ -8,18 +9,22 @@ export class SmsNotificationProvider implements NotificationProvider {
     if (key) {
       console.log(`[SMS Provider] Sending real SMS via API to ${to}...`);
       try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
+        const response = await fetchWithTimeout(
+          url,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${key}`,
+            },
+            body: JSON.stringify({
+              recipient: to,
+              text: message,
+              channel: channel.toLowerCase(),
+            }),
           },
-          body: JSON.stringify({
-            recipient: to,
-            text: message,
-            channel: channel.toLowerCase(),
-          }),
-        });
+          TIMEOUTS.SMS
+        );
         if (!response.ok) {
           throw new Error(`SMS gateway returned status: ${response.status}`);
         }

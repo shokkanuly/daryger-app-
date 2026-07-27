@@ -1,4 +1,4 @@
-import { CrawlerAdapter, RawPriceRow } from "../adapter";
+import { CrawlerAdapter, CrawlResult, RawPriceRow } from "../adapter";
 import { isCrawlAllowed, spaceRequest } from "../rate-limit";
 import { chromium } from "playwright";
 
@@ -6,11 +6,12 @@ export class InvitroAdapter implements CrawlerAdapter {
   clinicName = "Invitro Clinic";
   sourceUrl = "https://invitro.kz/analizes";
 
-  async fetch(): Promise<RawPriceRow[]> {
+  async fetch(): Promise<CrawlResult> {
     const allowed = await isCrawlAllowed(this.sourceUrl);
     if (!allowed) {
-      console.warn(`Crawling disallowed by robots.txt for ${this.sourceUrl}. Using safe fallback dataset.`);
-      return this.getFallbackData();
+      const note = `Crawling disallowed by robots.txt for ${this.sourceUrl}`;
+      console.warn(`${note}. Using fallback dataset.`);
+      return { rows: this.getFallbackData(), provenance: "FALLBACK", note };
     }
 
     let browser;
@@ -37,15 +38,21 @@ export class InvitroAdapter implements CrawlerAdapter {
       });
 
       await browser.close();
-      if (parsed.length > 0) return parsed;
+      if (parsed.length > 0) return { rows: parsed, provenance: "LIVE" };
       throw new Error("No elements parsed from Invitro DOM");
     } catch (err) {
-      console.error("Invitro scrape error (using fallback data):", err);
+      const note = `Invitro scrape failed: ${err instanceof Error ? err.message : String(err)}`;
+      console.error(`${note} (using fallback data)`);
       if (browser) await browser.close();
-      return this.getFallbackData();
+      return { rows: this.getFallbackData(), provenance: "FALLBACK", note };
     }
   }
 
+  /**
+   * Representative sample data, NOT scraped prices. Only returned when the live
+   * scrape is impossible — callers must check `provenance` before treating
+   * these as real. See CrawlProvenance in ../adapter.
+   */
   private getFallbackData(): RawPriceRow[] {
     return [
       { serviceNameRaw: "Клинический анализ крови (с лейкоцитарной формулой)", priceKzt: 2700, durationDays: 1 },

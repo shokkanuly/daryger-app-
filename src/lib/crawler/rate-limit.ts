@@ -1,4 +1,5 @@
 import robotsParser from "robots-parser";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 const robotsCache: Record<string, any> = {};
 
@@ -12,7 +13,7 @@ export async function isCrawlAllowed(targetUrl: string, userAgent = "DarygerCraw
 
     let robots = robotsCache[robotsUrl];
     if (!robots) {
-      const res = await fetch(robotsUrl);
+      const res = await fetchWithTimeout(robotsUrl, {}, TIMEOUTS.PREFLIGHT);
       if (res.ok) {
         const text = await res.text();
         robots = robotsParser(robotsUrl, text);

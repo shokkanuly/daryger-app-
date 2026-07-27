@@ -15,17 +15,26 @@ export async function POST(
   const consultation = await db.consultation.findUnique({ where: { id } });
   if (!consultation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (consultation.doctorId && consultation.doctorId !== session.id) {
-    return NextResponse.json({ error: "Consultation already claimed" }, { status: 400 });
-  }
-
-  const updated = await db.consultation.update({
-    where: { id },
+  // Claim conditionally rather than check-then-update: two doctors hitting this
+  // endpoint at once would both pass a separate existence check and the second
+  // update would silently steal the consultation. Narrowing the WHERE to
+  // unclaimed rows makes the database arbitrate, so exactly one caller wins.
+  const { count } = await db.consultation.updateMany({
+    where: { id, doctorId: null },
     data: {
       doctorId: session.id,
       status: "ACTIVE",
     },
   });
+
+  if (count === 0) {
+    // Either another doctor won the race, or this doctor already holds it.
+    const current = await db.consultation.findUnique({ where: { id } });
+    if (current?.doctorId === session.id) return NextResponse.json(current);
+    return NextResponse.json({ error: "Consultation already claimed" }, { status: 409 });
+  }
+
+  const updated = await db.consultation.findUnique({ where: { id } });
 
   await logAction(
     session.id,

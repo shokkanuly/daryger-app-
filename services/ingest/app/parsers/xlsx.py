@@ -21,6 +21,38 @@ def detect_columns(row_values: List[str]):
 
     return name_col, price_res_col, price_nonres_col
 
+def looks_like_index_column(values: List) -> bool:
+    """
+    True if a column is a row counter (a "№ п/п" column) rather than data.
+
+    Real price lists put "№ п/п" in column A. It is dense, entirely numeric, and
+    therefore beats the actual price column on every naive "most numeric cells"
+    heuristic — see the tie described in pick_price_column. The distinguishing
+    property is that its values are small consecutive integers.
+    """
+    nums = []
+    for v in values:
+        if v is None:
+            continue
+        try:
+            f = float(str(v).strip().replace(",", "."))
+        except (ValueError, TypeError):
+            continue
+        if f != int(f):
+            return False  # any fractional value means it is not a row counter
+        nums.append(int(f))
+
+    if len(nums) < 4:
+        return False
+
+    # A counter starts near 1 and steps by 1.
+    if min(nums) > 3:
+        return False
+    steps = [b - a for a, b in zip(nums, nums[1:])]
+    consecutive = sum(1 for s in steps if s == 1)
+    return consecutive / len(steps) > 0.85
+
+
 def parse_xlsx(file_path: str) -> List[Dict]:
     wb = openpyxl.load_workbook(file_path, data_only=True)
     rows = []
@@ -31,15 +63,29 @@ def parse_xlsx(file_path: str) -> List[Dict]:
         price_res_col = -1
         price_nonres_col = -1
 
-        # Scan the first 30 rows to find header
+        # Scan the first 30 rows to find header.
+        #
+        # Headers are frequently split across two rows: row N carries
+        # "Наименование услуги" while row N+1 carries the price column's caption
+        # in a different column (often a long sentence describing who the tariff
+        # applies to). Matching a single row at a time misses these entirely and
+        # silently drops through to the heuristic below, so each row is merged
+        # with the one after it before matching.
         max_scan = min(30, sheet.max_row)
         for r_idx in range(1, max_scan + 1):
-            row_vals = [sheet.cell(r_idx, c_idx).value for c_idx in range(1, sheet.max_column + 1)]
-            row_vals_str = [str(v) if v is not None else "" for v in row_vals]
-            
-            n_col, pr_col, pnr_col = detect_columns(row_vals_str)
-            if n_col != -1 and pr_col != -1:
-                header_row_idx = r_idx
+            merged = []
+            for c_idx in range(1, sheet.max_column + 1):
+                parts = []
+                for r in (r_idx, r_idx + 1):
+                    if r <= sheet.max_row:
+                        v = sheet.cell(r, c_idx).value
+                        if v is not None:
+                            parts.append(str(v))
+                merged.append(" ".join(parts))
+
+            n_col, pr_col, pnr_col = detect_columns(merged)
+            if n_col != -1 and pr_col != -1 and n_col != pr_col:
+                header_row_idx = r_idx + 1  # data starts after the merged pair
                 name_col = n_col
                 price_res_col = pr_col
                 price_nonres_col = pnr_col
@@ -78,14 +124,46 @@ def parse_xlsx(file_path: str) -> List[Dict]:
                         max_text_len = stats["text_len_sum"]
                         best_name_col = c
 
-            best_price_col = -1
-            max_num_count = -1
+            # Pick the price column.
+            #
+            # Ranking purely by "most numeric cells" ties the "№ п/п" counter
+            # against the real price column (both are numeric on every data
+            # row), and the tie broke toward whichever came first — always the
+            # leftmost counter. Two changes fix that: index-like columns are
+            # excluded outright, and remaining candidates are ranked by median
+            # magnitude, since a tariff is orders of magnitude larger than a
+            # row number.
+            price_candidates = []
             for c, stats in col_types.items():
-                if c != best_name_col and stats["total"] > 0:
-                    num_ratio = stats["num_count"] / stats["total"]
-                    if num_ratio > 0.4 and stats["num_count"] > max_num_count:
-                        max_num_count = stats["num_count"]
-                        best_price_col = c
+                if c == best_name_col or stats["total"] == 0:
+                    continue
+                if stats["num_count"] / stats["total"] <= 0.4:
+                    continue
+
+                col_values = [
+                    sheet.cell(r_idx, c + 1).value
+                    for r_idx in range(1, scan_limit + 1)
+                ]
+                if looks_like_index_column(col_values):
+                    continue
+
+                magnitudes = []
+                for v in col_values:
+                    if v is None:
+                        continue
+                    cleaned = re.sub(r'[^\d\.]', '', str(v).strip().replace(",", "."))
+                    if cleaned:
+                        try:
+                            magnitudes.append(float(cleaned))
+                        except ValueError:
+                            pass
+                if not magnitudes:
+                    continue
+                magnitudes.sort()
+                median = magnitudes[len(magnitudes) // 2]
+                price_candidates.append((median, stats["num_count"], c))
+
+            best_price_col = max(price_candidates)[2] if price_candidates else -1
 
             if best_name_col != -1:
                 name_col = best_name_col

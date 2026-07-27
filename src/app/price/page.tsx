@@ -180,7 +180,7 @@ function PriceSearchContent() {
         <div className="mx-auto max-w-4xl text-center">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-teal-300 bg-teal-950/40 px-3 py-1 rounded-full border border-teal-800/40 mb-3">
             <TrendingDown className="h-3.5 w-3.5" />
-            MedServicePrice.kz
+            Daryger
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight">Сравнить цены на медицинские услуги</h1>
           <p className="mt-2 text-teal-200 text-sm max-w-md mx-auto">
@@ -401,7 +401,7 @@ function PriceSearchContent() {
               <Sparkles className="h-4 w-4" />
               <div>
                 <p className="font-semibold text-sm">ИИ-Ассистент</p>
-                <p className="text-xs text-violet-200">Gemini 2.5 Flash · MedServicePrice</p>
+                <p className="text-xs text-violet-200">Gemini 2.5 Flash · Daryger</p>
               </div>
             </div>
             <button onClick={() => setChatOpen(false)} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
