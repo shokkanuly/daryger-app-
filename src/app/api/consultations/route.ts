@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { calculateUrgency, getComplaintLabel } from "@/lib/triage";
+import { fetchWithTimeout, TIMEOUTS } from "@/lib/http";
 
 export async function GET() {
   const session = await requireSession();
@@ -15,7 +16,9 @@ export async function GET() {
     include: {
       patient: { select: { id: true, name: true, town: true, phone: true } },
       doctor: { select: { id: true, name: true } },
-      messages: { orderBy: { createdAt: "asc" }, take: 1 },
+      // Preview excludes internal notes so a doctor-only message never
+      // surfaces as a patient's last message.
+      messages: { where: { isInternal: false }, orderBy: { createdAt: "asc" }, take: 1 },
       _count: { select: { messages: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -51,14 +54,14 @@ export async function POST(req: NextRequest) {
   if (isHepTrigger) {
     try {
       const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-      const assessRes = await fetch(`${baseUrl}/api/clinical/assess`, {
+      const assessRes = await fetchWithTimeout(`${baseUrl}/api/clinical/assess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Cookie: req.headers.get("cookie") ?? "",
         },
         body: JSON.stringify({ patientId: session.id, symptoms, answers }),
-      });
+      }, TIMEOUTS.EXTERNAL_API);
       if (assessRes.ok) {
         riskAssessment = await assessRes.json();
         if (riskAssessment && riskAssessment.score >= 3.0) {
@@ -74,14 +77,14 @@ export async function POST(req: NextRequest) {
   let aiAnalysis: Record<string, unknown> | null = null;
   try {
     const baseUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-    const aiRes = await fetch(`${baseUrl}/api/triage/analyze`, {
+    const aiRes = await fetchWithTimeout(`${baseUrl}/api/triage/analyze`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Cookie: req.headers.get("cookie") ?? "",
       },
       body: JSON.stringify({ answers, symptoms }),
-    });
+    }, TIMEOUTS.EXTERNAL_API);
     if (aiRes.ok) aiAnalysis = await aiRes.json();
   } catch {
     // Non-fatal
