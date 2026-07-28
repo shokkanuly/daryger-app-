@@ -1,5 +1,4 @@
 import { Worker } from "bullmq";
-import Redis from "ioredis";
 import { runCrawlJob } from "./catalog/ingest";
 import { parseDocumentJob } from "./jobs/parse-document";
 import { db } from "./db";
@@ -9,7 +8,7 @@ import { EotinishAdapter } from "./adapters/appeals/eotinish";
 import { syncAllSources } from "./sources/sync";
 import { getQueue } from "./queue";
 
-const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+import { createRedisConnection } from "./redis";
 
 let crawlWorker: Worker | null = null;
 let docWorker: Worker | null = null;
@@ -21,9 +20,7 @@ export function startWorker() {
     return;
   }
 
-  const connection = new Redis(redisUrl, {
-    maxRetriesPerRequest: null,
-  });
+  const connection = createRedisConnection("worker");
 
   if (!crawlWorker) {
     console.log("Starting BullMQ crawl-queue Worker...");

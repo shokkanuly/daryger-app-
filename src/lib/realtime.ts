@@ -1,4 +1,5 @@
-import Redis from "ioredis";
+import type Redis from "ioredis";
+import { createRedisConnection } from "./redis";
 
 /**
  * Redis pub/sub for consultation chat.
@@ -11,8 +12,6 @@ import Redis from "ioredis";
  * See docs/plans/chat-realtime.md for why pub/sub rather than polling, and for
  * the connection-count ceiling this implies.
  */
-
-const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
 /** Events a consultation stream can carry. Keep in sync with the client. */
 export type RealtimeEvent =
@@ -31,12 +30,9 @@ let publisher: Redis | null = null;
 
 function getPublisher(): Redis {
   if (!publisher) {
-    publisher = new Redis(redisUrl, { maxRetriesPerRequest: null });
-    publisher.on("error", (err) => {
-      // Never throw from here: a Redis outage must degrade chat to the stream's
-      // 30s reconciliation, not fail the request that posted the message.
-      console.error("[realtime] publisher error:", err.message);
-    });
+    // createRedisConnection attaches the error listener; an outage must degrade
+    // chat to the stream's 30s reconciliation, never fail the posting request.
+    publisher = createRedisConnection("publisher");
   }
   return publisher;
 }
@@ -77,11 +73,7 @@ export function subscribe(
   onEvent: (event: RealtimeEvent) => void
 ): () => Promise<void> {
   const channel = consultationChannel(consultationId);
-  const subscriber = new Redis(redisUrl, { maxRetriesPerRequest: null });
-
-  subscriber.on("error", (err) => {
-    console.error(`[realtime] subscriber error on ${channel}:`, err.message);
-  });
+  const subscriber = createRedisConnection(`sub:${consultationId}`);
 
   subscriber.subscribe(channel).catch((err) => {
     console.error(`[realtime] failed to subscribe to ${channel}:`, err.message);

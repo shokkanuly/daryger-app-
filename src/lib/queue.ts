@@ -1,18 +1,30 @@
 import { Queue } from "bullmq";
-import Redis from "ioredis";
+import type Redis from "ioredis";
+import { createRedisConnection } from "./redis";
 
-const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+/**
+ * BullMQ queue accessor.
+ *
+ * The connection is created on first use rather than at import time. Opening it
+ * at module scope meant any route importing this file started dialling Redis
+ * during startup — which on a deployment without a Redis service crash-looped
+ * the container before a single request was served.
+ */
 
-// We create a shared ioredis instance. maxRetriesPerRequest must be null for BullMQ compatibility.
-const connection = new Redis(redisUrl, {
-  maxRetriesPerRequest: null,
-});
+let connection: Redis | null = null;
+
+function getConnection(): Redis {
+  if (!connection) {
+    connection = createRedisConnection("queue");
+  }
+  return connection;
+}
 
 const queues: Record<string, Queue> = {};
 
 export function getQueue(name: string): Queue {
   if (!queues[name]) {
-    queues[name] = new Queue(name, { connection: connection as any });
+    queues[name] = new Queue(name, { connection: getConnection() as never });
   }
   return queues[name];
 }
