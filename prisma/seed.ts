@@ -19,6 +19,7 @@ async function main() {
   await db.doctorProfile.deleteMany();
   await db.user.deleteMany();
   await db.priceRecord.deleteMany();
+  await db.priceDocument.deleteMany();
   await db.matchQueueItem.deleteMany();
   await db.rawCapture.deleteMany();
   await db.clinic.deleteMany();

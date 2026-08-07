@@ -17,6 +17,7 @@ export async function Nav({ role }: NavProps) {
 
   // Guest links — visible without login
   const guestLinks = [
+    { href: "/find", label: "Найти врача" },
     { href: "/price", label: "Сравнить цены" },
     { href: "/login", label: t("nav.signIn") },
   ];
@@ -51,6 +52,7 @@ export async function Nav({ role }: NavProps) {
           { href: "/patient", label: t("nav.home") },
           { href: "/patient/consult", label: t("nav.getHelp") },
           { href: "/patient/appointments", label: t("nav.appointments") },
+          { href: "/find", label: "Найти врача" },
           { href: "/price", label: "Сравнить цены" },
         ];
 

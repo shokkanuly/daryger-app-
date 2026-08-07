@@ -51,9 +51,10 @@ export function useConsultationStream(
     // "ping" needs no handler — receiving it is enough to keep the socket warm.
 
     source.onerror = () => {
-      // EventSource retries by itself; log only so a flapping connection is
-      // visible in the console without spamming the user.
       console.warn("[consultation-stream] connection interrupted, retrying");
+      if (source.readyState === EventSource.CLOSED) {
+        source.close();
+      }
     };
 
     return () => source.close();

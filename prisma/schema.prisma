@@ -10,11 +10,20 @@ datasource db {
 enum Role {
   PATIENT
   DOCTOR
+  FELDSHER
   CLINIC_ADMIN
   PARTNER_OPERATOR
   FINANCE_ANALYST
   HR_ANALYST
   SYSTEM_ADMIN
+}
+
+/// What kind of provider a profile is. The pitch's wedge is that a directory of
+/// small-town care includes village feldshers, not only clinic doctors — so the
+/// distinction is a first-class field rather than a guess from `specialty`.
+enum ProviderType {
+  DOCTOR
+  FELDSHER
 }
 
 model AuditLog {
@@ -83,18 +92,29 @@ model User {
 }
 
 model DoctorProfile {
-  id            String  @id @default(cuid())
-  userId        String  @unique
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  userId        String       @unique
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerType  ProviderType @default(DOCTOR)
   specialty     String
   clinic        String
-  region        String  @default("Karaganda")
-  isAvailable   Boolean @default(true)
+  /// The specific town this provider serves. The public directory filters on
+  /// this — a resident of Балхаш needs Балхаш, not "Karaganda region".
+  town          String       @default("Karaganda")
+  region        String       @default("Karaganda")
+  /// Whether the provider offers remote consultations, so the directory can
+  /// promise "or telemedicine" honestly per provider.
+  offersTelemedicine Boolean @default(true)
+  isAvailable   Boolean      @default(true)
   bio           String?
   licenseNumber String?
-  isVerified    Boolean @default(false)
+  isVerified    Boolean      @default(false)
 
   timeSlots TimeSlot[]
+
+  // The directory's primary query: available providers in a town, by type.
+  @@index([town, isAvailable])
+  @@index([specialty])
 }
 
 model Consultation {

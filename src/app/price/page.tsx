@@ -85,10 +85,6 @@ function PriceSearchContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (query) performSearch();
-  }, []);
-
-  useEffect(() => {
     performSearch();
   }, [city, category]);
 
